@@ -68,6 +68,11 @@ std::map<std::string, Test> tests {
         {R"(<a href="/a/good.html">not me</a>)"},
         {R"(<a href="http://cdn.supa.ws/container_a/good.html">not me</a>)"}}
     },
+    {"change2nd", {
+        {"change2nd: Ignore the first attribute but change the second one"},
+        {R"(<a not_href="/a/good.html" href="/a/good.html">not me</a>)"},
+        {R"(<a not_href="/a/good.html" href="http://cdn.supa.ws/container_a/good.html">not me</a>)"}}
+    },
 };
 
 int fullTest() {
