@@ -78,21 +78,16 @@ std::map<std::string, Test> tests {
         {R"(<img src="good.html" />)"},
         {R"(<img src="http://cdn.supa.ws/implicit/good.html" />)"}}
     },
+    {"wsAroundAttrib", {
+        {"wsAroundAttrib: Get it even if there's white space around the attrib"},
+        {R"(<img     src =   "good.html" />)"},
+        {R"(<img     src =   "http://cdn.supa.ws/implicit/good.html" />)"}}
+    },
 };
 
 int fullTest() {
     using namespace cdnalizer;
     std::string html{
-        R"(<input type="text">
-        <a href="c/d/e.html">not me</a>
-        <img src="/nowhere.png" />
-        <img src="/a/somewhere.png" />
-        <img src="/b_somewhere.png" />
-        <a href="/not_a/a/download.pdf">don't get me</a>
-        <a href="/a/download.pdf">do get me</a>
-        <a href="implicit.pdf">get me too</a>
-        <a href="http://old.cdn/old.pdf">get me too</a>
-        )"
     };
     rewriteHTML("/here", cfg, html);
     std::string expected{
