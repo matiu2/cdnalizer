@@ -62,7 +62,12 @@ std::map<std::string, Test> tests {
         {"badAttribVal: attrib we don't care about"},
         {R"(<a not_href="/a/good.html">not me</a>)"},
         {R"(<a not_href="/a/good.html">not me</a>)"}}
-    }
+    },
+    {"changeA", {
+        {"changeA: attrib we don't care about"},
+        {R"(<a href="/a/good.html">not me</a>)"},
+        {R"(<a href="http://cdn.supa.ws/container_a/good.html">not me</a>)"}}
+    },
 };
 
 int fullTest() {

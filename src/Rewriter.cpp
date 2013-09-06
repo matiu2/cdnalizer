@@ -42,10 +42,13 @@ struct Rewriter {
                     if (found != config.tag_attrib.end()) {
                         // If we care, get the attribute value
                         auto attrib = findAttribute(tag, found->second);
-                        std::string newVal = getGoodVal(attrib);
-                        copy_until(attrib.first);                         // Copy up to the start of the attrib value
-                        std::copy(newVal.begin(), newVal.end(), out_pos); // Copy the new attribute Value
-                        in_pos += newVal.size();
+                        if (attrib.first < attrib.second) {
+                            // If we found the attribute we wanted, replace it's value
+                            std::string newVal = getGoodVal(attrib);
+                            copy_until(attrib.first);                         // Copy up to the start of the attrib value
+                            std::copy(newVal.begin(), newVal.end(), out_pos); // Copy the new attribute Value
+                            in_pos = attrib.second;
+                        }
                     }
                 }
                 copy_until(tag.second); // Finish copying the tag, ready for the next run
@@ -83,6 +86,18 @@ struct Rewriter {
         return result;
     }
 
+    bool isWS(const_iterator::value_type c) {
+        switch (c) {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /** Returns the start and end of the attribute value that you want
      * @return the start and end of the iterator value, or {tag.second, tag.second} if the attribute is not found
      */
@@ -95,9 +110,9 @@ struct Rewriter {
                 throw NotFound();
             return res;
         };
-        try {
-            auto start = tag.first;
-            while (start < end) {
+        auto start = tag.first;
+        while (start < end) {
+            try {
                 // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
                 auto space = find(start, ' ');
                 auto equal = find(space+1, '=');
@@ -106,19 +121,45 @@ struct Rewriter {
                 start = quote2+1; // Ready for the next run
                 // Check if this is the attribute we care about
                 if (space+1 < equal) {
-                    using Char = const_iterator::value_type;
-                    // (Use search to ignore extra white space before or after attrib name)
-                    auto attrib_found = std::search(space+1, equal, attrib_name.begin(), attrib_name.end(), [](Char a, Char b) {
+                    using std::placeholders::_1;
+                    auto isWS = std::bind(&Rewriter::isWS, this, _1);
+                    auto attrib_start = std::find_if_not(space+1, equal, isWS);
+                    auto attrib_end = std::find_if(attrib_start, equal, isWS);
+                    auto lower_compare = [](const_iterator::value_type a, const_iterator::value_type b) {
                         return std::tolower(a) == std::tolower(b);
-                    });
-                    if (attrib_found != equal)
-                        return {quote1+1, quote2};
+                    };
+                    if (((unsigned int)(attrib_end - attrib_start) == attrib_name.size()) && 
+                        (std::equal(attrib_start, attrib_end, attrib_name.begin(), lower_compare)))
+                            return {quote1+1, quote2};
                 }
+            } catch (NotFound) {
+                continue; // Try for more attributes
             }
-        } catch (NotFound) {
-            // Just needed to break out of the loop from inside the lambda
         }
         return {end, end};
+    }
+
+    /** Takes an attribute value and prepends our default location in the front if it's a relative path.
+     *  Changes the value in place.
+     *  @param path - will be changed in place, prepending the current location if it's a relative path
+     */
+    void insertDefaultPath(std::string path) {
+        if (path.empty())
+            return; // Empty path
+        if (path[0] == '/')
+            return; // Absolute path
+        // Check http
+        std::string http{"http://"};
+        auto match = std::mismatch(http.begin(), http.end(), path.begin());
+        if (match.first == http.end())
+            return; // http:// is an absolute path
+        // Check https
+        std::string https{"https://"};
+        match = std::mismatch(https.begin(), https.end(), path.begin());
+        if (match.first == https.end())
+            return; // https:// is an absolute path
+        // This is a relative path, prepend our current location
+        path = location + path;
     }
 
     /** Takes the start and end of the attribute value that we want and returns a new good value.
@@ -131,9 +172,23 @@ struct Rewriter {
         std::string value;
         value.reserve(attrib.second - attrib.first);
         std::copy(attrib.first, attrib.second, back_inserter(value));
+        insertDefaultPath(value); // Prepend it with our default location if possible
         // See if we have a replacement
-        auto found = config.paths.find(value);
-        return found != config.paths.end() ? found->second : value;
+        auto found = config.paths.upper_bound(value);
+        if (found-- != config.paths.end()) {
+            // Check if the path we found is a substring of the value
+            auto match = std::mismatch(found->first.begin(), found->first.end(), value.begin());
+            if (match.first == found->first.end()) {
+                // If the value starts with the path we found, replace that path part with the new url
+                std::string result;
+                result.reserve(found->second.size() + value.size() - found->first.size());
+                auto out = back_inserter(result);
+                std::copy(found->second.begin(), found->second.end(), out);
+                std::copy(match.second, value.end(), out);
+                return result;
+            }        
+        }
+        return value;
     }
 
 };
