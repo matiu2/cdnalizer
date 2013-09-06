@@ -83,29 +83,12 @@ std::map<std::string, Test> tests {
         {R"(<img     src =   "good.html" />)"},
         {R"(<img     src =   "http://cdn.supa.ws/implicit/good.html" />)"}}
     },
+    {"http", {
+        {"http: Change an old http cdn into a new cdn"},
+        {R"(<a href="http://old.cdn/old.pdf">old for new</a>)"},
+        {R"(<a href="http://new.cdn/old.pdf">old for new</a>)"}}
+    }
 };
-
-int fullTest() {
-    using namespace cdnalizer;
-    std::string html{
-    };
-    rewriteHTML("/here", cfg, html);
-    std::string expected{
-        R"(<input type="text">
-        <a href="c/d/e.html">not me</a>
-        <img src="/nowhere.png" />
-        <img src="http://cdn.supa.ws/container_a/somewhere.png" />
-        <img src="http://cdn.supa.ws/container_x/special/b_somewhere.png" />
-        <a href="/not_a/a/download.pdf">don't get me</a>
-        <a href="http://cdn.supa.ws/container_a/download.pdf">do get me</a>
-        <a href="http://cdn.supa.ws/implicit/implicit.pdf">get me too</a>
-        <a href="http://new.cdn/old.pdf">get me too</a>
-        )"
-    };
-    if (html != expected)
-        return 1;
-    return 0;
-}
 
 void printUsage(const char* progName) {
     std::cout << "Usage: " << progName << " TEST_NAME"

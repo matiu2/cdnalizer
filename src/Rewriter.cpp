@@ -175,7 +175,7 @@ struct Rewriter {
         insertDefaultPath(value); // Prepend it with our default location if possible
         // See if we have a replacement
         auto found = config.paths.upper_bound(value);
-        if (found-- != config.paths.end()) {
+        if (found-- != config.paths.begin()) {
             // Check if the path we found is a substring of the value
             auto match = std::mismatch(found->first.begin(), found->first.end(), value.begin());
             if (match.first == found->first.end()) {
