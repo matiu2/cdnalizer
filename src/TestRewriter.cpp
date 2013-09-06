@@ -32,7 +32,7 @@ struct Test {
         using std::cout;
         using std::endl;
         cout << name << " - ";
-        std::string out = rewriteHTML("/here", cfg, in);
+        std::string out = rewriteHTML("/here/", cfg, in);
         bool isGood = out == expected;
         if (isGood)
             cout << "PASSED";
@@ -72,6 +72,11 @@ std::map<std::string, Test> tests {
         {"change2nd: Ignore the first attribute but change the second one"},
         {R"(<a not_href="/a/good.html" href="/a/good.html">not me</a>)"},
         {R"(<a not_href="/a/good.html" href="http://cdn.supa.ws/container_a/good.html">not me</a>)"}}
+    },
+    {"pickUpLocation", {
+        {"pickUpLocation: Pick up the current location"},
+        {R"(<img src="good.html" />)"},
+        {R"(<img src="http://cdn.supa.ws/implicit/good.html" />)"}}
     },
 };
 

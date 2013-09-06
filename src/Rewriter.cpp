@@ -143,7 +143,7 @@ struct Rewriter {
      *  Changes the value in place.
      *  @param path - will be changed in place, prepending the current location if it's a relative path
      */
-    void insertDefaultPath(std::string path) {
+    void insertDefaultPath(std::string& path) {
         if (path.empty())
             return; // Empty path
         if (path[0] == '/')
