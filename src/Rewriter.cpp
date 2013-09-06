@@ -36,14 +36,17 @@ struct Rewriter {
                 auto tag = findNextTag(in_pos);
                 // Check if we care about it
                 std::string tagName = getTagName(tag);
-                auto found = config.tag_attrib.find(tagName);                
-                if (found != config.tag_attrib.end()) {
-                    // If we care, get the attribute value
-                    auto attrib = findAttribute(tag, found->second);
-                    std::string newVal = getGoodVal(attrib);
-                    copy_until(attrib.first);                         // Copy up to the start of the attrib value
-                    std::copy(newVal.begin(), newVal.end(), out_pos); // Copy the new attribute Value
-                    in_pos += newVal.size();
+                if (!tagName.empty()) {
+                    // If it's not a closing or empty tag, see if we care about it
+                    auto found = config.tag_attrib.find(tagName);                
+                    if (found != config.tag_attrib.end()) {
+                        // If we care, get the attribute value
+                        auto attrib = findAttribute(tag, found->second);
+                        std::string newVal = getGoodVal(attrib);
+                        copy_until(attrib.first);                         // Copy up to the start of the attrib value
+                        std::copy(newVal.begin(), newVal.end(), out_pos); // Copy the new attribute Value
+                        in_pos += newVal.size();
+                    }
                 }
                 copy_until(tag.second); // Finish copying the tag, ready for the next run
             }
@@ -66,10 +69,14 @@ struct Rewriter {
         return {start, end};
     }
 
-    /// Takes the start and end of a tag and retuns the tag name
+    /// Takes the start and end of a tag and retuns the tag name. Returns "" for closing tags.
     std::string getTagName(const_iterators tag) {
         auto start = tag.first+1;
         auto end = std::find(start, tag.second, ' ');
+        // Ignore closing tags
+        if ((end-start >= 1) && (*start == '/'))
+            return "";
+        // Return the result
         std::string result;
         result.reserve(end-start);
         std::copy(start, end, back_inserter(result));

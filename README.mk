@@ -21,5 +21,6 @@ This project provides an nginx and apache plugin that re-writes your outgoing HT
 
 # Future
 
+ * Threading
+ * Caching by url + quick checksum
  * Have it handle uploads and spool them straight up to cloud files
-

@@ -18,6 +18,8 @@ namespace cdnalizer {
 
 struct Config {
     using Map = std::map<std::string, std::string>;
+    Config(Map&& tag_attrib, Map&& paths) :
+        tag_attrib(tag_attrib), paths(paths) {}
     /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
     Map tag_attrib = {
         {"a", "href"},

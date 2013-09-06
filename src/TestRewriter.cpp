@@ -6,8 +6,22 @@
 #include <map>
 #include <functional>
 
-cdnalizer::Config cfg;
 struct Test;
+
+/// The default configuration for our tests
+cdnalizer::Config cfg{
+    { 
+        {"a", "href"},
+        {"img", "src"}
+    },
+    {
+        {"/a/", "http://cdn.supa.ws/container_a/"},
+        {"/b_", "http://cdn.supa.ws/container_x/special/b_"},
+        {"/here/", "http://cdn.supa.ws/implicit/"},
+        {"http://old.cdn/", "http://new.cdn/"}
+    }
+};
+
 
 /// Runs a test and outputs the result
 struct Test {
@@ -29,6 +43,25 @@ struct Test {
              << std::endl << "EXPECTED: " << expected
              << std::endl << std::endl;
         return isGood;
+    }
+};
+
+/// List of all tests that we can run by name
+std::map<std::string, Test> tests {
+    {"badTag", {
+        {"badTag: tag we don't care about"},
+        {R"(<input type="text">)"},
+        {R"(<input type="text">)"}}
+    },
+    {"badAttribVal", {
+        {"badAttribVal: attrib we don't care about"},
+        {R"(<a href="/c/d/e.html">not me</a>)"},
+        {R"(<a href="/c/d/e.html">not me</a>)"}}
+    },
+    {"missingAttrib", {
+        {"badAttribVal: attrib we don't care about"},
+        {R"(<a not_href="/a/good.html">not me</a>)"},
+        {R"(<a not_href="/a/good.html">not me</a>)"}}
     }
 };
 
@@ -64,20 +97,6 @@ int fullTest() {
     return 0;
 }
 
-/// List of all tests that we can run by name
-std::map<std::string, Test> tests {
-    {"noTag", {
-        {"noTag: tag we don't care about"},
-        {R"(<input type="text">)"},
-        {R"(<input type="text">)"}}
-    },
-    {"noAttrib", {
-        {"noAttrib: attrib we don't care about"},
-        {R"(<a href="c/d/e.html">not me</a>)"},
-        {R"(<a href="c/d/e.html">not me</a>)"}}
-    }
-};
-
 void printUsage(const char* progName) {
     std::cout << "Usage: " << progName << " TEST_NAME"
               << std::endl << "Where TEST_NAME is one of: "
@@ -92,24 +111,6 @@ int main(int argc, char** argv) {
         printUsage(argv[0]);
         return 1;
     }
-
-    cfg.paths = {
-        {"/a/", "http://cdn.supa.ws/container_a/"},
-        {"/b_", "http://cdn.supa.ws/container_x/special/b_"},
-        {"/here/", "http://cdn.supa.ws/implicit/"},
-        {"http://old.cdn/", "http://new.cdn/"}
-    };
-    
-    std::cout << "********** config contents **********" << std::endl;
-    for(auto pair : cfg.tag_attrib)
-        std::cout << pair.first << std::endl;
-    const cdnalizer::Config& c = cfg;
-    auto a = c.tag_attrib.find("a");
-    if (a != c.tag_attrib.end())
-        std::cout << "Found A tag";
-    else 
-        std::cout << "Couldn't find A tag";
-    std::cout << std::endl;
     
     std::vector<Test> testsToRun;
     
