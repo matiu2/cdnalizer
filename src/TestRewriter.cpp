@@ -87,6 +87,29 @@ std::map<std::string, Test> tests {
         {"http: Change an old http cdn into a new cdn"},
         {R"(<a href="http://old.cdn/old.pdf">old for new</a>)"},
         {R"(<a href="http://new.cdn/old.pdf">old for new</a>)"}}
+    },
+    {"lotsOfTags", {
+        {"lotsOfTags: Tests that lots of tabse can be done in one go"},
+        {R"(<input type="text">
+        <a href="/c/d/e.html">not me</a>
+        <img src="/nowhere.png" />
+        <img src="/a/somewhere.png" />
+        <img src="/b_somewhere.png" />
+        <a href="/not_a/a/download.pdf">don't get me</a>
+        <a href="/a/download.pdf">do get me</a>
+        <a href="implicit.pdf">get me too</a>
+        <a href="http://old.cdn/old.pdf">get me too</a>
+        )"},
+        {R"(<input type="text">
+        <a href="/c/d/e.html">not me</a>
+        <img src="/nowhere.png" />
+        <img src="http://cdn.supa.ws/container_a/somewhere.png" />
+        <img src="http://cdn.supa.ws/container_x/special/b_somewhere.png" />
+        <a href="/not_a/a/download.pdf">don't get me</a>
+        <a href="http://cdn.supa.ws/container_a/download.pdf">do get me</a>
+        <a href="http://cdn.supa.ws/implicit/implicit.pdf">get me too</a>
+        <a href="http://new.cdn/old.pdf">get me too</a>
+        )"}}
     }
 };
 
