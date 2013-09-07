@@ -18,7 +18,8 @@ cdnalizer::Config cfg{
         {"/a/", "http://cdn.supa.ws/container_a/"},
         {"/b_", "http://cdn.supa.ws/container_x/special/b_"},
         {"/here/", "http://cdn.supa.ws/implicit/"},
-        {"http://old.cdn/", "http://new.cdn/"}
+        {"http://old.cdn/", "http://new.cdn/"},
+        {"https://secure.cdn/", "http://unsafe.cdn/"}
     }
 };
 
@@ -87,6 +88,11 @@ std::map<std::string, Test> tests {
         {"http: Change an old http cdn into a new cdn"},
         {R"(<a href="http://old.cdn/old.pdf">old for new</a>)"},
         {R"(<a href="http://new.cdn/old.pdf">old for new</a>)"}}
+    },
+    {"https", {
+        {"https: Change an old https cdn into a new cdn"},
+        {R"(<a href="https://secure.cdn/old.pdf">old for new</a>)"},
+        {R"(<a href="http://unsafe.cdn/old.pdf">old for new</a>)"}}
     },
     {"lotsOfTags", {
         {"lotsOfTags: Tests that lots of tabse can be done in one go"},
