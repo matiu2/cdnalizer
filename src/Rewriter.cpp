@@ -6,7 +6,7 @@
 
 namespace cdnalizer {
 
-struct Rewriter {
+struct Rewriter::Impl {
     using iterator = std::string::iterator;
     using const_iterator = std::string::const_iterator;
     using iterators = std::pair<iterator, iterator>;
@@ -19,7 +19,7 @@ struct Rewriter {
     const_iterator real_end = in.end();
     std::string out;
 
-    Rewriter(const std::string& location, const Config& config, const std::string& html)
+    Impl(const std::string& location, const Config& config, const std::string& html)
         : location(location), config(config), in(html)
     { 
         // Rewrite the space for the output straight off the bat, plus 1K for probable expansions
@@ -122,7 +122,7 @@ struct Rewriter {
                 // Check if this is the attribute we care about
                 if (space+1 < equal) {
                     using std::placeholders::_1;
-                    auto isWS = std::bind(&Rewriter::isWS, this, _1);
+                    auto isWS = std::bind(&Impl::isWS, this, _1);
                     auto attrib_start = std::find_if_not(space+1, equal, isWS);
                     auto attrib_end = std::find_if(attrib_start, equal, isWS);
                     auto lower_compare = [](const_iterator::value_type a, const_iterator::value_type b) {
@@ -196,7 +196,7 @@ struct Rewriter {
 std::string rewriteHTML(const std::string& location,
                         const Config& config,
                         const std::string& html) {
-    Rewriter r{location, config, html};
+    Rewriter::Impl r{location, config, html};
     return r.out;
 }
 

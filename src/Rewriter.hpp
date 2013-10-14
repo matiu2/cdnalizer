@@ -5,8 +5,21 @@
 #include "Config.hpp"
 
 #include <string>
+#include <memory>
 
 namespace cdnalizer {
+
+class Rewriter {
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl;
+public:
+    Rewriter(const std::string& location,
+             const Config& config);
+    char // TODO: See how bucket brigade works
+
+
+};
 
 /**
  * Rewrites HTML, changing links and references to resources to point to they CDN equivalent
@@ -19,5 +32,7 @@ namespace cdnalizer {
 std::string rewriteHTML(const std::string& location,
                         const Config& config,
                         const std::string& html);
+
+
 
 }

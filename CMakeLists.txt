@@ -5,3 +5,4 @@ project (cdnalizer)
 add_definitions(-std=c++11 -Wall -Wextra)
 
 add_subdirectory(src)
+add_subdirectory(apache)
