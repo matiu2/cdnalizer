@@ -7,8 +7,8 @@
 namespace cdnalizer {
 
 struct Rewriter::Impl {
-    using iterator = std::string::iterator;
-    using const_iterator = std::string::const_iterator;
+    using iterator = char*;
+    using const_iterator = const char*;
     using iterators = std::pair<iterator, iterator>;
     using const_iterators = std::pair<const_iterator, const_iterator>;
     struct Done{}; /// Exception to say we're done parsing

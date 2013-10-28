@@ -57,23 +57,39 @@ struct State {
 
 static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb)
 {
-    // Don't pass empty brigodes down the line
+    /* A bucket is a bunch of data
+       A brigade is a bunch of buckets
+       Each web page is made up of one or more brigades
+       The filter->ctx lives for the life of that page */
+    /* Don't pass empty brigodes down the line */ 
     if (APR_BRIGADE_EMPTY(bb)) {
         return APR_SUCCESS;
     }
     struct State* state = filter->ctx;
     if (state == NULL) {
+        /* This is the first time we've seen this request */
         filter->ctx = state = apr_palloc(filter->r->pool, sizeof *state);
-        state->tmpbb = apr_brigade_create(filter->r->pool, filter->c->bucket_alloc);
+        // state->tmpbb = apr_brigade_create(filter->r->pool, filter->c->bucket_alloc);
+        state->tmpbb = NULL;
     }
-    // Get the first bucket
+    /* Get the first bucket */
     apr_bucket *bucket = APR_BRIGADE_FIRST(bb);
     const char *data;
     apr_size_t length;
     while (bucket != APR_BRIGADE_SENTINEL(bb)) {
+        if (APR_BUCKET_IS_EOS(bucket)) {
+            //return handle_last_bucket(bucket, state);
+        }
+        if (APR_BUCKET_IS_FLUSH(bucket)) {
+            //return flush(bucket, state);
+        }
+        if (APR_BUCKET_IS_METADATA(bucket)) {
+            // Just pass this bucket along
+        }
         apr_status_t status;
-        // Get the data
+        /* Get the data */
         status = apr_bucket_read(bucket, &data, &length, APR_BLOCK_READ);
+        /* Push it through our parser and see what the result is */
         bucket = APR_BUCKET_NEXT(bucket);
     }
     return ap_pass_brigade(filter->next, bb);
