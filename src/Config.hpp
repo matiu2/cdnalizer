@@ -21,6 +21,7 @@ namespace cdnalizer {
 class Config {
 public:
     using Container = std::map<std::string, std::string>;
+    using CDNPair = std::pair<const std::string&, const std::string&>;
 private:
     /// Map of paths to urls, eg. {{"/images/", "http://cdn.supa.ws/images/"}}
     Container path_url;
@@ -33,19 +34,29 @@ private:
     /// Lookup in a string dict, using a 'pair'
     /// @returns the value, or an empty string if not found
     const std::string& lookup(const Container& container, const pair& tag) const {
-        auto result = std::lower_bound(container.cbegin(), container.cend(), tag);
+        auto result = lower_bound(container.cbegin(), container.cend(), tag);
         if (result == container.cend())
             return empty;
         return result->first == tag ? result->second : empty;
     }
+    /// finds the best candidate for a match
+    /// @recturns the value
+    CDNPair search(const Container& container, const std::string& tag) const {
+        // upper_bound always returns one after the one we want,
+        // wether the key is an exact match or not
+        auto result = upper_bound(container.cbegin(), container.cend(), tag);
+        return *--result;
+    }
+
 public:
     /// Look up attributes by their tag
     Config(Container&& tag_attrib, Container&& path_url) :
         tag_attrib(tag_attrib), path_url(path_url) {}
     /// @return the attribute that we care about for a tag name, or an empty string if not found
-    const std::string& getAttrib(const pair& tag) { return lookup(tag_attrib, tag); }
-    /// @return the cdn url for a path, or an empty string if not found
-    const std::string& getCDNUrl(const pair& tag) { return lookup(path_url, tag); }
+    const std::string& getAttrib(const pair& tag) const { return lookup(tag_attrib, tag); }
+    /// Finds a close match. If you're searching for /images/abc.gif, and we have '/images' you'll get that.
+    /// @return the key that was matched, and the CDN url for that we should be serving
+    CDNPair findCDNUrl(const std::string& tag) const { return search(path_url, tag); }
 };
 
 }
