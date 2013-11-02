@@ -25,7 +25,7 @@ struct pair : base_pair {
         return second-first;
     }
     /// Subscript into the selection
-    char operator[](int i) const {
+    char operator[](size_t i) const {
         assert(i < length());
         return first[i];
     }
