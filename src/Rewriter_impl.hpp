@@ -59,14 +59,20 @@ struct Rewriter {
                     pos = tag_start+1;
                     continue;
                 }
-                auto tag_end = std::find(tag_start, end, '>');
+                const std::string tag_ends{"<>"};
+                auto tag_end = std::find_first_of(tag_start, end, tag_ends.begin(), tag_ends.end());
                 if (tag_end == end)
                     // We don't have the end of the tag, copy up to the start of it and break
                     throw Done{tag_start};
                 // We found a tag
                 pair tag{tag_start, tag_end+1};
                 handleTag(tag, copy_from);
-                pos = tag.second; // Now that we've handled the tag, continue searching from just past the end of it
+                // Now that we've handled the tag, continue searching from just past the end of it
+                if (*tag_end == '>')
+                    pos = tag.second; 
+                else
+                    // If we ended this tag by starting another, don't skip over it
+                    pos = tag_end;
             }
         } catch (Done e) {
             // We can push out the nuchanged data now

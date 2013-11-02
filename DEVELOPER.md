@@ -16,7 +16,7 @@
 
 -----
 
-# Bugs
+# New Bugs
 
 ## 1. Generates too much new output.
 
@@ -25,6 +25,10 @@ It doesn't need to generate extra data at the end of a link. eg. if we find "/im
 ## 2. Long tags
 
 Needs to handle tags that go over multiple buffers. What if you have a 20k tag ?
+
+----
+
+# Bugs that need testing
 
 ## 3. Handle bad syntax
 
