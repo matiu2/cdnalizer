@@ -51,7 +51,7 @@ private:
 public:
     /// Look up attributes by their tag
     Config(Container&& tag_attrib, Container&& path_url) :
-        tag_attrib(tag_attrib), path_url(path_url) {}
+        path_url(path_url), tag_attrib(tag_attrib) {}
     /// @return the attribute that we care about for a tag name, or an empty string if not found
     const std::string& getAttrib(const pair& tag) const { return lookup(tag_attrib, tag); }
     /// Finds a close match. If you're searching for /images/abc.gif, and we have '/images' you'll get that.

@@ -43,7 +43,7 @@ struct Rewriter {
      */
     iterator run() {
         iterator pos = start;
-        iterator copy_from = start;
+        iterator nextNoChangeStart = start;
         try {
             while (pos != end) {
                 // Find the next tag
@@ -66,7 +66,7 @@ struct Rewriter {
                     throw Done{tag_start};
                 // We found a tag
                 pair tag{tag_start, tag_end+1};
-                handleTag(tag, copy_from);
+                handleTag(tag, nextNoChangeStart);
                 // Now that we've handled the tag, continue searching from just past the end of it
                 if (*tag_end == '>')
                     pos = tag.second; 
@@ -77,7 +77,7 @@ struct Rewriter {
         } catch (Done e) {
             // We can push out the nuchanged data now
             assert(noChange);
-            noChange(copy_from, e.pos);
+            noChange(nextNoChangeStart, e.pos);
             return e.pos;
         }
         return end;
@@ -86,13 +86,13 @@ struct Rewriter {
     /** Once we've found a tag, handles checking, then possibly emiting events to change the attribute.
      *
      * If we change one of the attributes, emit the 'noChange' event for the data before the attribute value,
-     * then the 'newData' event for the new attribute value, then set the copy_from iterator to the '"' after
+     * then the 'newData' event for the new attribute value, then set the @a nextNoChangeStart iterator to the '"' after
      * the attribute value.
      *
      * @param tag The tag that we found
-     * @param copy_from The place where one kkk
+     * @param nextNoChangeStart The place where one kkk
      * */
-    void handleTag(pair tag, iterator& copy_from) {
+    void handleTag(pair tag, iterator& nextNoChangeStart) {
         // Get the tag name
         pair tag_name = getTagName(tag);
         if (!tag_name) 
@@ -106,19 +106,7 @@ struct Rewriter {
         if (attrib.first == tag.second)
             return;
         // If we found the attribute we wanted, see if we can get a new value from the config
-        std::string newVal = getGoodAttribVal(attrib);
-        if (newVal.empty()) 
-            return;
-        // If there is a new attribute value..
-        // Make sure we got given actual event handlers
-        assert(noChange);
-        assert(newData);
-        // Output the unchanged bits
-        noChange(copy_from, attrib.first);
-        // Send on the new data
-        newData(newVal);
-        // Get ready for next loop
-        copy_from = attrib.second; // Next time the 'unchanged data' will start with the '"' after the attribute value
+        handleAttributeValue(attrib, nextNoChangeStart);
     }
 
     /// Takes the start and end of a tag and retuns the tag name.
@@ -130,7 +118,9 @@ struct Rewriter {
     }
 
     /** Returns the start and end of the attribute value that you want
-     * @return the start and end of the iterator value, or {tag.second, tag.second} if the attribute is not found
+     * @param tag The range that of the tag, within which we'll search
+     * @param attrib_name The attribute name that we're searching for
+     * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
     pair findAttribute(pair tag, const std::string& attrib_name) {
         struct NotFound{}; /// Exception for if we can't find the attribute
@@ -185,22 +175,27 @@ struct Rewriter {
         }
     }
 
-    /** Takes the start and end of the attribute value that we want and returns a new good value.
-     * If we don't have anything to change, just returns the original value
+    /** Takes the start and end of the attribute value that we care about and emits events, possibly changing the value.
      *
-     * @return returns the desired attribute value, or an empty string if no change is to be made
+     * If we don't have anything to change, just outputs nothing and leaves @a nextNoChangeStart unchanged
+     *
+     * @param attrib_range The range in the input, of the attribute value we care about
+     * @param nextNoChangeStart The start of the next 'noChange' event's range. We may change it.
+     *
      */
-    std::string getGoodAttribVal(pair attrib) {
-        std::string attrib_value;
-        if (is_relative(attrib)) {
+    void handleAttributeValue(pair attrib_range, iterator& nextNoChangeStart) {
+        // Work out the attrib value we'll search the config DB for
+        std::string attrib_value; 
+        if (is_relative(attrib_range)) {
             // Prepend the attrib value with our current location if it's a relative path
-            attrib_value.reserve(location.length() + attrib.second - attrib.first);
+            attrib_value.reserve(location.length() + attrib_range.second - attrib_range.first);
             std::copy(location.begin(), location.end(), std::back_inserter(attrib_value));
         } else {
             // Just copy the attribute value to the string
-            attrib_value.reserve(attrib.second - attrib.first);
+            attrib_value.reserve(attrib_range.second - attrib_range.first);
         }
-        std::copy(attrib.first, attrib.second, std::back_inserter(attrib_value));
+        std::copy(attrib_range.first, attrib_range.second, std::back_inserter(attrib_value));
+
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
         auto found = config.findCDNUrl(attrib_value);
@@ -215,12 +210,17 @@ struct Rewriter {
                 result.reserve(cdn_url.length() + attrib_value.length() - base_path.length());
                 auto out = back_inserter(result);
                 std::copy(cdn_url.begin(), cdn_url.end(), out);
-                std::copy(match.second, attrib_value.end(), out);
-                return result;
+                // Push it out
+                // Make sure we got given actual event handlers
+                assert(noChange);
+                assert(newData);
+                // Output the unchanged bits
+                noChange(nextNoChangeStart, attrib_range.first);
+                // Send on the new data
+                newData(cdn_url);
+                nextNoChangeStart += base_path.length(); // Next time the 'unchanged data' will start with the '"' after the attribute value
             }        
         }
-        // Return value unchanged
-        return "";
     }
 
     /** Returns true if 'path' is relative.
