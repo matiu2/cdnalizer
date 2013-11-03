@@ -1,0 +1,23 @@
+digraph find_attrib_name {
+	rankdir=LR;
+	node [ shape = point ];
+	ENTRY;
+	en_1;
+	eof_5;
+	node [ shape = circle, height = 0.2 ];
+	node [ fixedsize = true, height = 0.65, shape = doublecircle ];
+	4;
+	5;
+	node [ shape = circle ];
+	1 -> 2 [ label = "'0'..'9', 'A'..'Z', 'a'..'z' / start_attrib_name" ];
+	2 -> 3 [ label = "'\\t'..'\\r', SP / found_attrib_name" ];
+	2 -> 4 [ label = "'\"', '<', '>' / found_attrib_name" ];
+	2 -> 2 [ label = "'0'..'9', 'A'..'Z', 'a'..'z'" ];
+	2 -> 5 [ label = "'=' / found_attrib_name" ];
+	3 -> 3 [ label = "'\\t'..'\\r', SP" ];
+	3 -> 4 [ label = "'\"', '<', '>'" ];
+	3 -> 5 [ label = "'='" ];
+	ENTRY -> 1 [ label = "IN" ];
+	en_1 -> 1 [ label = "find_attrib_name" ];
+	5 -> eof_5 [ label = "EOF / good_ending" ];
+}

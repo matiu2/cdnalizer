@@ -1,0 +1,23 @@
+digraph tag_name {
+	rankdir=LR;
+	node [ shape = point ];
+	ENTRY;
+	en_1;
+	eof_3;
+	eof_5;
+	node [ shape = circle, height = 0.2 ];
+	node [ fixedsize = true, height = 0.65, shape = doublecircle ];
+	3;
+	4;
+	5;
+	node [ shape = circle ];
+	1 -> 2 [ label = "'0'..'9', 'A'..'Z', 'a'..'z' / start_tag_name" ];
+	2 -> 3 [ label = "'\\t'..'\\r', SP / end_tag_name" ];
+	2 -> 2 [ label = "'0'..'9', 'A'..'Z', 'a'..'z'" ];
+	2 -> 4 [ label = "'<' / end_tag_name, new_tag" ];
+	2 -> 5 [ label = "'>' / end_tag_name" ];
+	ENTRY -> 1 [ label = "IN" ];
+	en_1 -> 1 [ label = "tag_name" ];
+	3 -> eof_3 [ label = "EOF / good_ending" ];
+	5 -> eof_5 [ label = "EOF / tag_ends" ];
+}
