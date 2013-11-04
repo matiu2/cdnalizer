@@ -28,13 +28,21 @@ private:
     /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
     Container tag_attrib = {
         {"a", "href"},
+        {"applet", "codebase"},
         {"area", "href"},
+        {"audio", "src"},
         {"base", "href"},
         {"bgsound", "src"},
+        {"blockquote", "cite"},
         {"embed", "src"},
         {"frame", "src"},
         {"iframe", "src"},
         {"img", "src"},
+        {"input", "src"},
+        {"layer", "src"},
+        {"object", "usemap"},
+        {"q", "url"},
+        {"script", "url"},
         {"style", "src"}
     };
     const std::string empty={};
