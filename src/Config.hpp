@@ -28,6 +28,12 @@ private:
     /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
     Container tag_attrib = {
         {"a", "href"},
+        {"area", "href"},
+        {"base", "href"},
+        {"bgsound", "src"},
+        {"embed", "src"},
+        {"frame", "src"},
+        {"iframe", "src"},
         {"img", "src"},
         {"style", "src"}
     };
