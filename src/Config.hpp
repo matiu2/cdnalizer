@@ -28,7 +28,8 @@ private:
     /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
     Container tag_attrib = {
         {"a", "href"},
-        {"img", "src"}
+        {"img", "src"},
+        {"style", "src"}
     };
     const std::string empty={};
     /// Lookup in a string dict, using a 'pair'
@@ -47,11 +48,18 @@ private:
         auto result = upper_bound(container.cbegin(), container.cend(), tag);
         return *--result;
     }
-
 public:
-    /// Look up attributes by their tag
-    Config(Container&& tag_attrib, Container&& path_url) :
-        path_url(path_url), tag_attrib(tag_attrib) {}
+    /** Initialize the configuration.
+     *
+     * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
+     */
+    Config(Container&& path_url) : path_url(path_url) {}
+    /** Initialize the configuration.
+     *
+     * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
+     * @param tag_attrib A map of tag names to the attribute we should check. Must all be lower case. eg. {{"a", "href"}}
+     */
+    Config(Container&& path_url, Container&& tag_attrib) : path_url(path_url), tag_attrib(tag_attrib) {}
     /// @return the attribute that we care about for a tag name, or an empty string if not found
     const std::string& getAttrib(const pair& tag) const { return lookup(tag_attrib, tag); }
     /// Finds a close match. If you're searching for /images/abc.gif, and we have '/images' you'll get that.

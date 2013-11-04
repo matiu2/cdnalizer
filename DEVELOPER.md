@@ -40,6 +40,31 @@ Could be done with ragel.
 
 Easier pointer management, no buffering required for stdin, no extra layer between Apache buckets and the algorithm.
 
+### Conclusion
+
+Trying the ragel, forwardish version, it too, needs to either skip back or copy data.
+It has less chance of overflowing between buffers as it looks at smaller chunks:
+
+Reading in the whole tag:
+
+    some text <a some="attribute" href="/images/a.gif" />
+    ^         ^                                         ^
+    \start    \Remember tag start       Remember tag end/
+
+    some text <a some="attribute" href="/images/a.gif" />
+              ^ ^
+              \skip back and read tag name
+
+    some text <a some="attribute" href="/images/a.gif" />
+                ^    ^^         ^
+                Find space, '=', '"', '"' (findAttribute and compare the name)
+
+    some text <a some="attribute" href="/images/a.gif" />
+                      ^   ^
+                 \Read attrib name
+
+I think for now, I'll just get a working version, then later come back and look at a ragel, less random access version.
+
 -----
 
 # New Bugs

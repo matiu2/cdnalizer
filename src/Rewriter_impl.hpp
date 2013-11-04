@@ -119,7 +119,7 @@ struct Rewriter {
 
     /** Returns the start and end of the attribute value that you want
      * @param tag The range that of the tag, within which we'll search
-     * @param attrib_name The attribute name that we're searching for
+     * @param attrib_name The attribute name that we're searching for. Must be all lower case.
      * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
     pair findAttribute(pair tag, const std::string& attrib_name) {
@@ -141,19 +141,23 @@ struct Rewriter {
                 auto quote2 = find(quote1+1, '"');
                 pos = quote2+1; // Ready for the next run
                 // Check if this is the attribute we care about
+                // There must be an attribute name (' ' .. 'attrib_name' .. '=') not (" =")
                 if (space+1 < equal) {
                     using std::placeholders::_1;
                     // Skip over multiple adjacent whitespace before the attrib name
                     auto attrib_start = std::find_if_not(space+1, equal, isWS);
                     auto attrib_end = std::find_if(attrib_start, equal, isWS);
                     pair attrib_found{attrib_start, attrib_end};
-                    // Case insensitive compare
-                    auto lower_compare = [](char a, char b) {
-                        return std::tolower(a) == std::tolower(b);
-                    };
-                    if ((attrib_found.length() == attrib_name.length()) && 
-                        (std::equal(attrib_start, attrib_end, attrib_name.begin(), lower_compare)))
+                    // Check if the attribute name is the one we're looking for
+                    if (attrib_found.length() == attrib_name.length()) {
+                        // Case insensitive compare
+                        auto lower_compare = [](char a, char b) {
+                            // TODO: Could ge better performance if we assume/check that attrib_name is lower case at the start
+                            return std::tolower(a) == std::tolower(b);
+                        };
+                        if (std::equal(attrib_start, attrib_end, attrib_name.begin(), lower_compare))
                             return {quote1+1, quote2};
+                    }
                 }
             } catch (NotFound) {
                 // We couldn't find any more attributes in this tag
