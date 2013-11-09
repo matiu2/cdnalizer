@@ -1,6 +1,8 @@
+#pragma once
 #include "Rewriter.hpp"
 
 #include "Config.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <iterator>   // find search
@@ -8,7 +10,9 @@
 
 namespace cdnalizer {
 
+template <typename iterator, typename char_type=char>
 struct Rewriter {
+    using pair = pair<iterator>;
     /// An exception we throw when we have finished parsing the input, and catch in the main loop.
     struct Done {
         iterator pos;  /// The character that the next run should start with. (One past the last character we read).
@@ -20,11 +24,10 @@ struct Rewriter {
     iterator end;
     
     // Events
-    RangeEvent noChange;
+    RangeEvent<iterator> noChange;
     DataEvent newData;
 
-    const char* ws=" \t\r\n";
-    const char* ws_end=ws+4;
+    const std::string ws=" \t\r\n";
 
     Rewriter(
         const std::string& location,
@@ -33,7 +36,7 @@ struct Rewriter {
         iterator end,
         
         // Events
-        RangeEvent noChange,
+        RangeEvent<iterator> noChange,
         DataEvent newData
     ) : location{location}, config{config}, start{start}, end{end},
         noChange{noChange}, newData{newData} {}
@@ -51,12 +54,13 @@ struct Rewriter {
                 if (tag_start == end)
                     // There are no more tags, send all the data
                     throw Done{end};
-                if (tag_start+1 == end)
+                auto next = tag_start;
+                if (++next == end)
                     // The tag is just before the end of the data, send everything before it
                     throw Done{tag_start};
-                if (tag_start[1] == '/') {
+                if (*next == '/') {
                     // This is a closing tag, continue the search
-                    pos = tag_start+1;
+                    pos = next;
                     continue;
                 }
                 const std::string tag_ends{"<>"};
@@ -65,7 +69,7 @@ struct Rewriter {
                     // We don't have the end of the tag, copy up to the start of it and break
                     throw Done{tag_start};
                 // We found a tag
-                pair tag{tag_start, tag_end+1};
+                pair tag{tag_start, next};
                 handleTag(tag, nextNoChangeStart);
                 // Now that we've handled the tag, continue searching from just past the end of it
                 if (*tag_end == '>')
@@ -111,8 +115,8 @@ struct Rewriter {
 
     /// Takes the start and end of a tag and retuns the tag name.
     pair getTagName(pair tag) {
-        auto name_start = tag.first+1;
-        auto name_end = std::find_first_of(name_start, tag.second, ws, ws_end);
+        auto name_start = tag.first;
+        auto name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
         return {name_start, name_end};
     }
@@ -132,33 +136,33 @@ struct Rewriter {
             return res;
         };
         auto pos = tag.first;
-        while (pos < tag_end) {
+        while (pos != tag_end) {
             try {
                 // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
                 auto space = find(pos, ' ');
-                auto equal = find(space+1, '=');
-                auto quote1 = find(equal+1, '"');
-                auto quote2 = find(quote1+1, '"');
-                pos = quote2+1; // Ready for the next run
+                auto after_space = space;
+                ++after_space;
+                auto equals = find(space, '=');
+                auto quote1 = find(equals, '"');
+                auto after_quote = quote1;
+                auto quote2 = find(++after_quote, '"');
+                // Get ready for the next run
+                pos = quote2; 
+                ++pos;
                 // Check if this is the attribute we care about
                 // There must be an attribute name (' ' .. 'attrib_name' .. '=') not (" =")
-                if (space+1 < equal) {
-                    using std::placeholders::_1;
-                    // Skip over multiple adjacent whitespace before the attrib name
-                    auto attrib_start = std::find_if_not(space+1, equal, isWS);
-                    auto attrib_end = std::find_if(attrib_start, equal, isWS);
-                    pair attrib_found{attrib_start, attrib_end};
-                    // Check if the attribute name is the one we're looking for
-                    if (attrib_found.length() == attrib_name.length()) {
-                        // Case insensitive compare
-                        auto lower_compare = [](char a, char b) {
-                            // TODO: Could ge better performance if we assume/check that attrib_name is lower case at the start
-                            return std::tolower(a) == std::tolower(b);
-                        };
-                        if (std::equal(attrib_start, attrib_end, attrib_name.begin(), lower_compare))
-                            return {quote1+1, quote2};
-                    }
-                }
+                using std::placeholders::_1;
+                // Skip over multiple adjacent whitespace before the attrib name
+                auto attrib_name_start = std::find_if_not(after_space, equals, isWS);
+                auto attrib_name_end = std::find_if(attrib_name_start, equals, isWS);
+                pair attrib_name_range{attrib_name_start, attrib_name_end};
+                // Check if the attribute name is the one we're looking for
+                // Case insensitive compare
+                auto lower_compare = [](char_type a, char_type b) {
+                    return std::tolower(a) == std::tolower(b);
+                };
+                if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), lower_compare))
+                    return {++quote1, quote2};
             } catch (NotFound) {
                 // We couldn't find any more attributes in this tag
                 break;
@@ -189,16 +193,13 @@ struct Rewriter {
      */
     void handleAttributeValue(pair attrib_range, iterator& nextNoChangeStart) {
         // Work out the attrib value we'll search the config DB for
-        std::string attrib_value; 
+        std::string attrib_value;
+        auto value_putter = std::back_inserter(attrib_value);
         if (is_relative(attrib_range)) {
             // Prepend the attrib value with our current location if it's a relative path
-            attrib_value.reserve(location.length() + attrib_range.second - attrib_range.first);
-            std::copy(location.begin(), location.end(), std::back_inserter(attrib_value));
-        } else {
-            // Just copy the attribute value to the string
-            attrib_value.reserve(attrib_range.second - attrib_range.first);
+            std::copy(location.begin(), location.end(), value_putter);
         }
-        std::copy(attrib_range.first, attrib_range.second, std::back_inserter(attrib_value));
+        std::copy(attrib_range.first, attrib_range.second, value_putter);
 
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
@@ -222,7 +223,7 @@ struct Rewriter {
                 noChange(nextNoChangeStart, attrib_range.first);
                 // Send on the new data
                 newData(cdn_url);
-                nextNoChangeStart += base_path.length(); // Next time the 'unchanged data' will start with the '"' after the attribute value
+                nextNoChangeStart = ++(attrib_range.second); // Next time the 'unchanged data' will start with the '"' after the attribute value
             }        
         }
     }
@@ -239,26 +240,31 @@ struct Rewriter {
             return false; // Empty path
         if (path[0] == '/')
             return false; // Absolute path
-        // If it can hold at least http://x
-        if (path.length() > 7) {
-            // Check http and friends
-            std::string http{"http"};
-            auto match = std::mismatch(http.begin(), http.end(), path.first);
-            if (match.first == http.end()) {
-                // Check http:// and https://
-                auto checkStart = match.first+1;
-                if (*checkStart == 's')
-                    ++checkStart;
-                std::string protocol{"://"};
-                auto match = std::mismatch(protocol.begin(), protocol.end(), checkStart);
-                if (match.first == protocol.end())
-                    return false;
-            }
+        // Check http and friends
+        std::string http{"http"};
+        auto match = utils::mismatch(http.cbegin(), http.cend(), path.first, path.second);
+        if (match.first == http.end()) {
+            // Check http:// and https://
+            auto checkStart = match.first+1;
+            if (*checkStart == 's')
+                ++checkStart;
+            std::string protocol{"://"};
+            auto match = utils::mismatch(protocol.cbegin(), protocol.cend(), checkStart, http.cend());
+            if (match.first == protocol.end())
+                return false;
         }
         return true;
     }
-
-
 };
+
+
+template <typename iterator, typename char_type>
+iterator rewriteHTML(const std::string& location, const Config& config,
+                     iterator start, iterator end,
+                     RangeEvent<iterator> noChange, DataEvent newData) 
+{
+    Rewriter<iterator, char_type> r{location, config, start, end, noChange, newData};
+    return r.run();
+}
 
 }

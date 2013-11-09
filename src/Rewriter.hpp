@@ -10,9 +10,9 @@
 
 namespace cdnalizer {
 
-using RangeEvent = std::function<void(const char*, const char*)>; /// Used for events where start and end pointers signify a range in the input
+template<typename iterator>
+using RangeEvent = std::function<void(iterator, iterator)>; /// Used for events where start and end pointers signify a range in the input
 using DataEvent = std::function<void(std::string)>;               /// Used for events that generate new data
-using EndEvent = std::function<void(const char*)>;
 
 /** Rewrites links and references in HTML output to point to the CDN.
  *  For example /images/a.gif could become http://cdn.yoursite.com/images/a.gif
@@ -31,24 +31,13 @@ using EndEvent = std::function<void(const char*)>;
  *                 Example usage: myRewriter.onNoChange = [](const char* a, const char* b) { passInputThroughToOutput(a, b); }
  *                 See whe rewriteHTML function for a more concrete example.
  * @param newData  Event fired when new data for the output stream has been generated
- * @param finished Event fired when we're unable to process any more data
+ * @returns The place where we reading when we hit @a end - at the time of writing
+ *          if we were in the middle of a tag, we'll return the position of the '<',
+ *          otherwise, it'll be the same as end.
  */
-void rewriteHTML(const std::string& location, const Config& config,
-                 const char* start, const char* end,
-                 RangeEvent noChange, DataEvent newData, EndEvent finished);
-
-/** Rewrite a flat HTML string, changing some urls to the CDN equivalents
- * The input must be complete, no chunking please.
- *
- * @param location the base location in the file system, or URL hierachy.
- *                 For expample if location is '/people' and we see a relative url like '<img src="images/a.gif" />'
- *                 we'll treat that url as /people/images/a.gif.
- * @param config   The configuration object to use
- * @param html     All the html content in one block, that we will be converting
- * @return         The new HTML string with the URLs re-written to the CDN equivalents
- */
-std::string rewriteHTML(const std::string& location,
-                        const Config& config,
-                        const std::string& html);
+template <typename iterator, typename char_type=char>
+iterator rewriteHTML(const std::string& location, const Config& config,
+                 iterator start, iterator end,
+                 RangeEvent<iterator> noChange, DataEvent newData);
 
 }

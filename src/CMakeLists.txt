@@ -1,3 +1,4 @@
 project (Rewriter)
 
-add_executable(TestRewriter TestRewriter.cpp Rewriter.cpp)
+add_subdirectory(stream)
+add_subdirectory(standalone)

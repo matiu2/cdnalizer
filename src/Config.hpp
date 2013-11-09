@@ -16,6 +16,12 @@
 
 #include "pair.hpp"
 
+namespace std {
+    /// So we can do searching and sorting on our Container below
+    inline bool operator <(const string& a, const pair<string, string>& b) { return a < b.first; }
+    inline bool operator <(const pair<string, string>& a, const string& b) { return a.first < b; }
+}
+
 namespace cdnalizer {
 
 class Config {
@@ -48,7 +54,8 @@ private:
     const std::string empty={};
     /// Lookup in a string dict, using a 'pair'
     /// @returns the value, or an empty string if not found
-    const std::string& lookup(const Container& container, const pair& tag) const {
+    template <typename iterator>
+    const std::string& lookup(const Container& container, const pair<iterator>& tag) const {
         auto result = lower_bound(container.cbegin(), container.cend(), tag);
         if (result == container.cend())
             return empty;
@@ -75,7 +82,8 @@ public:
      */
     Config(Container&& path_url, Container&& tag_attrib) : path_url(path_url), tag_attrib(tag_attrib) {}
     /// @return the attribute that we care about for a tag name, or an empty string if not found
-    const std::string& getAttrib(const pair& tag) const { return lookup(tag_attrib, tag); }
+    template <typename iterator>
+    const std::string& getAttrib(const pair<iterator>& tag) const { return lookup(tag_attrib, tag); }
     /// Finds a close match. If you're searching for /images/abc.gif, and we have '/images' you'll get that.
     /// @return the key that was matched, and the CDN url for that we should be serving
     CDNPair findCDNUrl(const std::string& tag) const { return search(path_url, tag); }
