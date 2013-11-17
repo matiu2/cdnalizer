@@ -12,7 +12,7 @@ namespace cdnalizer {
 
 template <typename iterator, typename char_type=char>
 struct Rewriter {
-    using pair = pair<iterator>;
+    using pair = cdnalizer::pair<iterator>;
     /// An exception we throw when we have finished parsing the input, and catch in the main loop.
     struct Done {
         iterator pos;  /// The character that the next run should start with. (One past the last character we read).
@@ -64,12 +64,12 @@ struct Rewriter {
                     continue;
                 }
                 const std::string tag_ends{"<>"};
-                auto tag_end = std::find_first_of(tag_start, end, tag_ends.begin(), tag_ends.end());
+                auto tag_end = std::find_first_of(next, end, tag_ends.begin(), tag_ends.end());
                 if (tag_end == end)
                     // We don't have the end of the tag, copy up to the start of it and break
                     throw Done{tag_start};
                 // We found a tag
-                pair tag{tag_start, next};
+                pair tag{tag_start, tag_end};
                 handleTag(tag, nextNoChangeStart);
                 // Now that we've handled the tag, continue searching from just past the end of it
                 if (*tag_end == '>')
@@ -106,7 +106,7 @@ struct Rewriter {
         if (attrib_name.empty())
             return;
         // If we care, get the attribute value
-        auto attrib = findAttribute(tag, attrib_name);
+        pair attrib = findAttribute(tag, attrib_name);
         if (attrib.first == tag.second)
             return;
         // If we found the attribute we wanted, see if we can get a new value from the config
@@ -115,8 +115,8 @@ struct Rewriter {
 
     /// Takes the start and end of a tag and retuns the tag name.
     pair getTagName(pair tag) {
-        auto name_start = tag.first;
-        auto name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
+        iterator name_start = tag.first;
+        iterator name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
         return {name_start, name_end};
     }
@@ -128,24 +128,24 @@ struct Rewriter {
      */
     pair findAttribute(pair tag, const std::string& attrib_name) {
         struct NotFound{}; /// Exception for if we can't find the attribute
-        auto tag_end = tag.second;
+        iterator tag_end = tag.second;
         auto find = [=](iterator start, char c) {
-            auto res = std::find(start, tag_end, c);
+            iterator res = std::find(start, tag_end, c);
             if (res == tag_end)
                 throw NotFound();
             return res;
         };
-        auto pos = tag.first;
+        iterator pos = tag.first;
         while (pos != tag_end) {
             try {
                 // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
-                auto space = find(pos, ' ');
-                auto after_space = space;
+                iterator space = find(pos, ' ');
+                iterator after_space = space;
                 ++after_space;
-                auto equals = find(space, '=');
-                auto quote1 = find(equals, '"');
-                auto after_quote = quote1;
-                auto quote2 = find(++after_quote, '"');
+                iterator equals = find(space, '=');
+                iterator quote1 = find(equals, '"');
+                iterator after_quote = quote1;
+                iterator quote2 = find(++after_quote, '"');
                 // Get ready for the next run
                 pos = quote2; 
                 ++pos;
@@ -153,8 +153,8 @@ struct Rewriter {
                 // There must be an attribute name (' ' .. 'attrib_name' .. '=') not (" =")
                 using std::placeholders::_1;
                 // Skip over multiple adjacent whitespace before the attrib name
-                auto attrib_name_start = std::find_if_not(after_space, equals, isWS);
-                auto attrib_name_end = std::find_if(attrib_name_start, equals, isWS);
+                iterator attrib_name_start = std::find_if_not(after_space, equals, isWS);
+                iterator attrib_name_end = std::find_if(attrib_name_start, equals, isWS);
                 pair attrib_name_range{attrib_name_start, attrib_name_end};
                 // Check if the attribute name is the one we're looking for
                 // Case insensitive compare

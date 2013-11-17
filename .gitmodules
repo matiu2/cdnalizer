@@ -1,0 +1,3 @@
+[submodule "dependencies/bandit"]
+	path = dependencies/bandit
+	url = https://github.com/joakimkarlsson/bandit.git

@@ -20,6 +20,7 @@ template<typename iterator>
 struct pair : std::pair<iterator, iterator> {
     using ParentClass = std::pair<iterator, iterator>;
     pair() : ParentClass() {};
+    pair(const pair& other) : ParentClass(other.first, other.second) {}
     pair(iterator first, iterator second) : ParentClass(first, second) {};
     /// Subscript into the selection
     char operator[](size_t i) const {
