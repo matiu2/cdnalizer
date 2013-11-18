@@ -28,34 +28,19 @@ go_bandit([](){
             AssertThat(*a, Is().EqualTo('0'));
         });
 
+        it("Should be incrementable", [&](){
+            Iterator a(data);
+            for (char x='0'; x<='9'; ++x) 
+                AssertThat(*a++, Is().EqualTo(x));
+        });
+
+        it("Should be copyable", [&](){
+            Iterator a(data);
+            Iterator b(a);
+            AssertThat(*a, Is().EqualTo(*b).EqualTo('0'));
+        });
     });
 });
-
-namespace cdnalizer {
-namespace stream {
-
-struct Tester {
-    std::stringstream data{"0123456789"};
-    Iterator a{data};
-    /// Should be able to read a char
-    void canRead() {
-        Iterator a(data);
-        assert(*a == '0');
-    }
-    void basicInc() {
-        Iterator a(data);
-        assert(*a++ == '0');
-        assert(*a == '1');
-    }
-    void  run() {
-        canRead();
-        basicInc();
-    }
-};
-
-}
-
-}
 
 int main(int argc, char** argv) {
     bandit::run(argc, argv);

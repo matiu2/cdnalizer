@@ -66,6 +66,12 @@ private:
 public:
     BaseIterator(stream_type& stream) : stream(stream) {}
     BaseIterator(type& other) : stream(other.stream), haveRead(other.haveRead), value(other.value), next(&other) {
+        if (!haveRead) {
+            // If the other one is in the pre-lazy-read state, do the read so we have good data.
+            other.getValue();
+            value = other.value;
+            haveRead = other.haveRead;
+        }
         if (other.prev)
             prev = other.prev;
         other.prev = this;
@@ -83,6 +89,8 @@ public:
             haveRead = false;
         else
             getValue();
+        if (prev && prev->buffer)
+            prev->buffer->push_back(value);
     }
     type operator++(int) {
         type result{*this};
