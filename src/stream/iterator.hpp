@@ -84,13 +84,13 @@ public:
         getValue();
         return &value;
     }
-    void operator++() {
-        if (haveRead)
-            haveRead = false;
-        else
+    type& operator++() {
+        if (!haveRead)
             getValue();
+        haveRead = false;
         if (prev && prev->buffer)
             prev->buffer->push_back(value);
+        return *this;
     }
     type operator++(int) {
         type result{*this};

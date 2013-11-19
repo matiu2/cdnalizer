@@ -34,11 +34,35 @@ go_bandit([](){
                 AssertThat(*a++, Is().EqualTo(x));
         });
 
+        it("Should be pre-incrementable", [&](){
+            Iterator a(data);
+            for (char x='1'; x<='9'; ++x) 
+                AssertThat(*(++a), Is().EqualTo(x));
+        });
+
         it("Should be copyable", [&](){
             Iterator a(data);
             Iterator b(a);
             AssertThat(*a, Is().EqualTo(*b).EqualTo('0'));
         });
+    });
+
+    describe("Iterator Pair", [&](){
+        std::stringstream data;
+
+        before_each([&]() {
+            data.str("0123456789");
+        });
+
+        it("Should be able to close the gap", [&](){
+            Iterator a(data);
+            Iterator b(a);
+            AssertThat(*a, Is().EqualTo(*b).EqualTo('0'));
+
+
+        
+        });
+
     });
 });
 
