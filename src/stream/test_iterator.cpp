@@ -16,6 +16,7 @@ go_bandit([](){
         std::stringstream data;
 
         before_each([&]() {
+            data.clear();
             data.str("0123456789");
         });
 
@@ -51,6 +52,7 @@ go_bandit([](){
         std::stringstream data;
 
         before_each([&]() {
+            data.clear();
             data.str("0123456789");
         });
 

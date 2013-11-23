@@ -29,7 +29,6 @@
  *
  * ## When my_it++ (post decrement operator) is called
  *
- * To stop unnecssary creation of a buffer, through copying, the same iterator is returned with a 'lazy_inc' flag set.
  */
 
 #include <istream>
@@ -42,6 +41,9 @@ namespace cdnalizer {
 namespace stream {
 
 
+struct EndOfStream{};
+
+
 template <typename char_type, typename stream_type=std::basic_istream<char_type>>
 class BaseIterator {
 public:
@@ -49,10 +51,10 @@ public:
     using type = BaseIterator<char_type>;
     using buffer_type = std::vector<char_type>;
     using buffer_holder = buffer_type*;
-    using buffer_offset = typename buffer_type::iterator;
+    using buffer_offset = typename buffer_type::size_type;
 private:
-    stream_type& stream;
-    char_type value;
+    stream_type* stream = nullptr;
+    char_type value = 0;
     type* next = nullptr;
     type* prev = nullptr;
     buffer_holder buffer = nullptr;
@@ -62,11 +64,13 @@ private:
     void createBuffer() {
         assert(!buffer);
         buffer = new buffer_type;
+        pos = buffer->size();
         // To the end of the chain
         type* other = next;
         while (other) {
             assert(!other->buffer);
             other->buffer = buffer;
+            other->pos = pos;
             other = other->next;
         }
         // To the beginning of the chain
@@ -74,6 +78,7 @@ private:
         while (other) {
             assert(!other->buffer);
             other->buffer = buffer;
+            other->pos = pos;
             other = other->prev;
         }
     }
@@ -88,8 +93,10 @@ private:
             next->prev = prev;
     }
 public:
-    BaseIterator(stream_type& stream) : stream(stream) {
-        stream.read(&value, 1);
+    BaseIterator(stream_type& stream) : stream(&stream) {
+        this->stream->read(&value, 1);
+        if (this->stream->bad())
+            throw EndOfStream();
     }
     BaseIterator(type& other) : stream(other.stream), value(other.value), next(&other), prev(other.prev), buffer(other.buffer)  {
         // Insert our selves in the chain
@@ -98,6 +105,8 @@ public:
         if (!buffer)
             createBuffer();
     }
+    /// Constructor for a temporary, read-once and throw away object
+    BaseIterator(char_type value) : value(value) {}
     ~BaseIterator() {
         // Clean up the buffer if we're the last one alive
         if (buffer && !prev && !next)
@@ -108,18 +117,23 @@ public:
     char_type operator *() { return value; }
     char_type* operator ->() { return &value; }
     type& operator++() {
+        assert(stream); // Can't be called on read and throw away versions
         // If we have no buffer, read from the stream
-        if (!buffer)
-            stream.read(&value, 1);
+        if (!buffer) {
+            stream->read(&value, 1);
+            if (this->stream->bad())
+                throw EndOfStream();
+        }
         // If we can read from the buffer, do it
-        else if (pos != buffer_offset{})
-            value = *(++pos);
+        else if (pos != buffer->size())
+            value = buffer->at(pos++);
         // If we're at the end of the buffer
         else {
             // Read from the stream
-            stream.read(&value, 1);
+            stream->read(&value, 1);
             // Append the byte we read to the buffer
             buffer->push_back(value);
+            pos = buffer->size();
             // Become the head of the chain
             if (next) {
                 // Remove ourselves from the end of the chain
@@ -137,18 +151,18 @@ public:
             }
             // Make any 'past the end' buffer pointers behind us, point to the last byte of the buffer
             type* past = prev;
-            auto end = buffer->end();
-            auto last = buffer->end() - 1;
+            auto end = buffer->size();
             while (past) {
                 if (past->pos == end)
-                    past->pos = last;
+                    --(past->pos);
                 past = past->prev;
             }
         }
         return *this;
     }
     type operator++(int) {
-        type result{*this};
+        assert(stream); // Can't be called on read and throw away versions
+        type result{value}; // Create a read-and-throw instance to return
         operator++();
         return result;
     }
