@@ -58,8 +58,17 @@ go_bandit([](){
             Iterator a(data);
             Iterator b(a);
             AssertThat(*a, Is().EqualTo(*b).EqualTo('0'));
+            ++b;
+            AssertThat(*a, Is().EqualTo('0'));
+            AssertThat(*b, Is().EqualTo('1'));
 
+            b++;
+            AssertThat(*a, Is().EqualTo('0'));
+            AssertThat(*b, Is().EqualTo('2'));
 
+            a++;
+            AssertThat(*a, Is().EqualTo('1'));
+            AssertThat(*b, Is().EqualTo('2'));
         
         });
 
