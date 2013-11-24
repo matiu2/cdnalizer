@@ -41,13 +41,12 @@ namespace cdnalizer {
 namespace stream {
 
 
-struct EndOfStream{};
+struct BadRead{};
 
 
 template <typename char_type, typename stream_type=std::basic_istream<char_type>>
-class BaseIterator {
+class BaseIterator : public std::iterator<std::forward_iterator_tag, char_type> {
 public:
-    using value_type = char_type;
     using type = BaseIterator<char_type>;
     using buffer_type = std::vector<char_type>;
     using buffer_holder = buffer_type*;
@@ -55,22 +54,22 @@ public:
 private:
     stream_type* stream = nullptr;
     char_type value = 0;
-    type* next = nullptr;
-    type* prev = nullptr;
+    mutable type* next = nullptr;
+    mutable type* prev = nullptr;
     buffer_holder buffer = nullptr;
-    buffer_offset pos{};
+    buffer_offset buf_pos{};
 
     /// Creates a buffer and makes sure that all iterators in the chain have a copy
     void createBuffer() {
         assert(!buffer);
         buffer = new buffer_type;
-        pos = buffer->size();
+        buf_pos = buffer->size();
         // To the end of the chain
         type* other = next;
         while (other) {
             assert(!other->buffer);
             other->buffer = buffer;
-            other->pos = pos;
+            other->buf_pos = buf_pos;
             other = other->next;
         }
         // To the beginning of the chain
@@ -78,7 +77,7 @@ private:
         while (other) {
             assert(!other->buffer);
             other->buffer = buffer;
-            other->pos = pos;
+            other->buf_pos = buf_pos;
             other = other->prev;
         }
     }
@@ -92,21 +91,35 @@ private:
         if (next)
             next->prev = prev;
     }
+
+    /// Returns true if we can't be incremented any more
+    bool isEOF() const {
+        if (!buffer && !stream && !next && !prev)
+            return true;
+        if (stream && stream->eof())
+            return true;
+        if (!buffer && !stream)
+            return true;
+        return false;
+    }
+
 public:
     BaseIterator(stream_type& stream) : stream(&stream) {
         this->stream->read(&value, 1);
         if (this->stream->bad())
-            throw EndOfStream();
+            throw BadRead();
     }
-    BaseIterator(type& other) : stream(other.stream), value(other.value), next(&other), prev(other.prev), buffer(other.buffer)  {
+    BaseIterator(const type& other) : stream(other.stream), value(other.value), next(&const_cast<type&>(other)), prev(other.prev), buffer(other.buffer)  {
         // Insert our selves in the chain
         other.prev = this;
         // Create a buffer if there isn't one
-        if (!buffer)
+        if (stream && !buffer)
             createBuffer();
     }
     /// Constructor for a temporary, read-once and throw away object
     BaseIterator(char_type value) : value(value) {}
+    /// Represents the end of a stream
+    BaseIterator() {}
     ~BaseIterator() {
         // Clean up the buffer if we're the last one alive
         if (buffer && !prev && !next)
@@ -122,18 +135,18 @@ public:
         if (!buffer) {
             stream->read(&value, 1);
             if (this->stream->bad())
-                throw EndOfStream();
+                throw BadRead();
         }
         // If we can read from the buffer, do it
-        else if (pos != buffer->size())
-            value = buffer->at(pos++);
+        else if (buf_pos != buffer->size())
+            value = buffer->at(buf_pos++);
         // If we're at the end of the buffer
         else {
             // Read from the stream
             stream->read(&value, 1);
             // Append the byte we read to the buffer
             buffer->push_back(value);
-            pos = buffer->size();
+            buf_pos = buffer->size();
             // Become the head of the chain
             if (next) {
                 // Remove ourselves from the end of the chain
@@ -153,8 +166,8 @@ public:
             type* past = prev;
             auto end = buffer->size();
             while (past) {
-                if (past->pos == end)
-                    --(past->pos);
+                if (past->buf_pos == end)
+                    --(past->buf_pos);
                 past = past->prev;
             }
         }
@@ -165,6 +178,22 @@ public:
         type result{value}; // Create a read-and-throw instance to return
         operator++();
         return result;
+    }
+    /// Only useful for checking if this iterator is at the end of the data
+    bool operator==(const type& other) const {
+        if (isEOF())
+            // Both are eof
+            return other.isEOF();
+        else if (buffer && other.buffer)
+            // Same buffer and same pos
+            return (buffer == other.buffer) && (buf_pos == other.buf_pos);
+        else if (stream && (stream == other.stream) && !buffer && !other.buffer && (value == other.value))
+            // Same stream, and neither has a buffer, and both have the same value
+            return true;
+        return false;
+    }
+    bool operator!=(const type& other) const {
+        return !operator==(other);
     }
 };
 

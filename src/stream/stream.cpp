@@ -1,8 +1,7 @@
 #include "stream.hpp"
 #include "../Rewriter.hpp"
 #include "../Rewriter_impl.hpp"
-
-#include <iterator>
+#include "iterator.hpp"
 
 namespace cdnalizer {
 namespace stream {
@@ -14,18 +13,17 @@ void rewriteHTML(const std::string& location,
                  std::ostream& output)
 {
     // Sort out our iterators
-    using iterator = std::istream_iterator<char>;
-    iterator in_start(html);
-    iterator in_end{};
+    Iterator in_start(html);
+    Iterator in_end{};
 
     std::ostream_iterator<char> out(output);
 
     // Event handlers
-    auto noChange = [&out](iterator a, iterator b) { std::copy(a, b, out); };
+    auto noChange = [&out](Iterator a, Iterator b) { std::copy(a, b, out); };
     auto newData = [&output](const std::string& data) { output << data; };
     
-    // Parse the hctml
-    auto done = cdnalizer::rewriteHTML<iterator>(
+    // Parse the html
+    auto done = cdnalizer::rewriteHTML<Iterator>(
         location, config, in_start, in_end,
         noChange, newData);
 

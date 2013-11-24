@@ -46,6 +46,15 @@ go_bandit([](){
             Iterator b(a);
             AssertThat(*a, Is().EqualTo(*b).EqualTo('0'));
         });
+
+        it("Should be that an end of stream iterator == a default constructed one", [&](){
+            Iterator a(data);
+            for (int i=0; i<10; ++i)
+                ++a;
+            ++a;
+            Iterator c;
+            AssertThat(a, Is().EqualTo(c));
+        });
     });
 
     describe("Iterator Pair", [&](){
@@ -71,7 +80,6 @@ go_bandit([](){
             a++;
             AssertThat(*a, Is().EqualTo('1'));
             AssertThat(*b, Is().EqualTo('2'));
-        
         });
 
     });
