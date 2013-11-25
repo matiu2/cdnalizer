@@ -85,7 +85,6 @@ private:
     /// Remove ourself from the chain
     void unlink() {
         // We're no longer in a chain, and have no use for a buffer
-        buffer = nullptr;
         if (prev)
             prev->next = next;
         if (next)
@@ -124,8 +123,10 @@ public:
         // Clean up the buffer if we're the last one alive
         if (buffer && !prev && !next)
             delete buffer;
-        else
+        else {
+            buffer = nullptr;
             unlink();
+        }
     }
     char_type operator *() { return value; }
     char_type* operator ->() { return &value; }
@@ -159,16 +160,9 @@ public:
                     end = end->next;
                 // Become the end
                 end->next = this;
+                unlink();
                 prev = end;
                 next = nullptr;
-            }
-            // Make any 'past the end' buffer pointers behind us, point to the last byte of the buffer
-            type* past = prev;
-            auto end = buffer->size();
-            while (past) {
-                if (past->buf_pos == end)
-                    --(past->buf_pos);
-                past = past->prev;
             }
         }
         return *this;

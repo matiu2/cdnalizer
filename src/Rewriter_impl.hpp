@@ -96,7 +96,7 @@ struct Rewriter {
      * @param tag The tag that we found
      * @param nextNoChangeStart The place where one kkk
      * */
-    void handleTag(pair tag, iterator& nextNoChangeStart) {
+    void handleTag(const pair& tag, iterator& nextNoChangeStart) {
         // Get the tag name
         pair tag_name = getTagName(tag);
         if (!tag_name) 
@@ -114,7 +114,7 @@ struct Rewriter {
     }
 
     /// Takes the start and end of a tag and retuns the tag name.
-    pair getTagName(pair tag) {
+    pair getTagName(const pair& tag) {
         iterator name_start = tag.first;
         iterator name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
@@ -126,7 +126,7 @@ struct Rewriter {
      * @param attrib_name The attribute name that we're searching for. Must be all lower case.
      * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
-    pair findAttribute(pair tag, const std::string& attrib_name) {
+    pair findAttribute(const pair& tag, const std::string& attrib_name) {
         struct NotFound{}; /// Exception for if we can't find the attribute
         iterator tag_end = tag.second;
         auto find = [=](iterator start, char c) {
