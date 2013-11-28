@@ -33,6 +33,7 @@
 
 #include <istream>
 #include <vector>
+#include <list>
 #include <memory>
 #include <iterator>
 #include <cassert>
@@ -43,57 +44,70 @@ namespace stream {
 
 struct BadRead{};
 
+/*  
+ * TODO: Make a custom stream buf that wraps the streambuf of a stream when an iterator for that stream is created.
+ * That way all iterators created on the stream can share the same buffer.
+ */
 
-template <typename char_type, typename stream_type=std::basic_istream<char_type>>
-class BaseIterator : public std::iterator<std::forward_iterator_tag, char_type> {
-public:
-    using type = BaseIterator<char_type>;
+/** Buffer that is shared between a group of iterators.
+ *
+ * When an iterator is copied, it becomes part owner in a shared buffer.
+ */
+template<typename Iterator, typename char_type=typename Iterator::char_type>
+struct Buffer {
     using buffer_type = std::vector<char_type>;
-    using buffer_holder = buffer_type*;
-    using buffer_offset = typename buffer_type::size_type;
+    using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
+    using size_type = typename buffer_type::size_type;
+    using buffer_offset = size_type;
+    using iterators_type = std::list<const Iterator*>;
+    using p_iterators_type = std::shared_ptr<iterators_type>;
+
+    p_iterators_type iterators;
+    p_buffer_type buffer;
+    void remove_iterator(Iterator* i) {
+        assert(iterators);
+        iterators->remove(i);
+    }
+    void add_iterator(const Iterator* i) {
+        assert(iterators);
+        iterators->push_back(i);
+    }
+    operator bool() const {
+        return (bool)buffer;
+    }
+    buffer_type* operator ->() {
+        assert(buffer);
+        return buffer.get();
+    }
+    buffer_type& operator *() {
+        assert(buffer);
+        return *buffer;
+    }
+    /// Just creates the buffer and the iterators
+    void initialize() {
+        assert(!buffer);
+        buffer = p_buffer_type(new buffer_type);
+        assert(!iterators);
+        iterators = p_iterators_type(new iterators_type);
+    }
+};
+
+
+template <typename CharType, typename stream_type=std::basic_istream<CharType>>
+class BaseIterator : public std::iterator<std::forward_iterator_tag, CharType> {
+public:
+    using char_type = CharType;
+    using type = BaseIterator<char>;
+    using Buffer = Buffer<type, char_type>;
 private:
     stream_type* stream = nullptr;
     char_type value = 0;
-    mutable type* next = nullptr;
-    mutable type* prev = nullptr;
-    buffer_holder buffer = nullptr;
-    buffer_offset buf_pos{};
-
-    /// Creates a buffer and makes sure that all iterators in the chain have a copy
-    void createBuffer() {
-        assert(!buffer);
-        buffer = new buffer_type;
-        buf_pos = buffer->size();
-        // To the end of the chain
-        type* other = next;
-        while (other) {
-            assert(!other->buffer);
-            other->buffer = buffer;
-            other->buf_pos = buf_pos;
-            other = other->next;
-        }
-        // To the beginning of the chain
-        other = prev;
-        while (other) {
-            assert(!other->buffer);
-            other->buffer = buffer;
-            other->buf_pos = buf_pos;
-            other = other->prev;
-        }
-    }
-
-    /// Remove ourself from the chain
-    void unlink() {
-        // We're no longer in a chain, and have no use for a buffer
-        if (prev)
-            prev->next = next;
-        if (next)
-            next->prev = prev;
-    }
+    Buffer buffer;
+    typename Buffer::buffer_offset buf_pos{};
 
     /// Returns true if we can't be incremented any more
     bool isEOF() const {
-        if (!buffer && !stream && !next && !prev)
+        if (!buffer && !stream)
             return true;
         if (stream && stream->eof())
             return true;
@@ -108,12 +122,19 @@ public:
         if (this->stream->bad())
             throw BadRead();
     }
-    BaseIterator(const type& other) : stream(other.stream), value(other.value), next(&const_cast<type&>(other)), prev(other.prev), buffer(other.buffer)  {
-        // Insert our selves in the chain
-        other.prev = this;
+    BaseIterator(const type& other) : stream(other.stream), value(other.value), buffer(other.buffer)  {
         // Create a buffer if there isn't one
-        if (stream && !buffer)
-            createBuffer();
+        if (!stream)
+            return;
+        if (buffer)
+            buffer.add_iterator(this);
+        else {
+            buffer.initialize();
+            const_cast<type&>(other).buffer = buffer;
+            // Insert our selves in the chain
+            buffer.add_iterator(this);
+            buffer.add_iterator(&other);
+        }
     }
     /// Constructor for a temporary, read-once and throw away object
     BaseIterator(char_type value) : value(value) {}
@@ -121,12 +142,8 @@ public:
     BaseIterator() {}
     ~BaseIterator() {
         // Clean up the buffer if we're the last one alive
-        if (buffer && !prev && !next)
-            delete buffer;
-        else {
-            buffer = nullptr;
-            unlink();
-        }
+        if (buffer)
+            buffer.remove_iterator(this);
     }
     char_type operator *() { return value; }
     char_type* operator ->() { return &value; }
@@ -135,7 +152,7 @@ public:
         // If we have no buffer, read from the stream
         if (!buffer) {
             stream->read(&value, 1);
-            if (this->stream->bad())
+            if (stream->bad())
                 throw BadRead();
         }
         // If we can read from the buffer, do it
@@ -148,22 +165,6 @@ public:
             // Append the byte we read to the buffer
             buffer->push_back(value);
             buf_pos = buffer->size();
-            // Become the head of the chain
-            if (next) {
-                // Remove ourselves from the end of the chain
-                if (prev)
-                    prev->next = next;
-                next->prev = prev;
-                // Find the end of the chain
-                type* end = next;
-                while (end->next)
-                    end = end->next;
-                // Become the end
-                end->next = this;
-                unlink();
-                prev = end;
-                next = nullptr;
-            }
         }
         return *this;
     }
