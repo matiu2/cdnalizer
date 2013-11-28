@@ -59,19 +59,8 @@ struct Buffer {
     using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
     using size_type = typename buffer_type::size_type;
     using buffer_offset = size_type;
-    using iterators_type = std::list<const Iterator*>;
-    using p_iterators_type = std::shared_ptr<iterators_type>;
 
-    p_iterators_type iterators;
     p_buffer_type buffer;
-    void remove_iterator(Iterator* i) {
-        assert(iterators);
-        iterators->remove(i);
-    }
-    void add_iterator(const Iterator* i) {
-        assert(iterators);
-        iterators->push_back(i);
-    }
     operator bool() const {
         return (bool)buffer;
     }
@@ -87,8 +76,6 @@ struct Buffer {
     void initialize() {
         assert(!buffer);
         buffer = p_buffer_type(new buffer_type);
-        assert(!iterators);
-        iterators = p_iterators_type(new iterators_type);
     }
 };
 
@@ -122,29 +109,19 @@ public:
         if (this->stream->bad())
             throw BadRead();
     }
-    BaseIterator(const type& other) : stream(other.stream), value(other.value), buffer(other.buffer)  {
+    BaseIterator(const type& other) : stream(other.stream), value(other.value), buffer(other.buffer), buf_pos(other.buf_pos)  {
         // Create a buffer if there isn't one
         if (!stream)
             return;
-        if (buffer)
-            buffer.add_iterator(this);
-        else {
+        if (!buffer) {
             buffer.initialize();
             const_cast<type&>(other).buffer = buffer;
-            // Insert our selves in the chain
-            buffer.add_iterator(this);
-            buffer.add_iterator(&other);
         }
     }
     /// Constructor for a temporary, read-once and throw away object
     BaseIterator(char_type value) : value(value) {}
     /// Represents the end of a stream
     BaseIterator() {}
-    ~BaseIterator() {
-        // Clean up the buffer if we're the last one alive
-        if (buffer)
-            buffer.remove_iterator(this);
-    }
     char_type operator *() { return value; }
     char_type* operator ->() { return &value; }
     type& operator++() {
