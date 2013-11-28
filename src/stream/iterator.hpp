@@ -49,48 +49,20 @@ struct BadRead{};
  * That way all iterators created on the stream can share the same buffer.
  */
 
-/** Buffer that is shared between a group of iterators.
- *
- * When an iterator is copied, it becomes part owner in a shared buffer.
- */
-template<typename Iterator, typename char_type=typename Iterator::char_type>
-struct Buffer {
-    using buffer_type = std::vector<char_type>;
-    using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
-    using size_type = typename buffer_type::size_type;
-    using buffer_offset = size_type;
-
-    p_buffer_type buffer;
-    operator bool() const {
-        return (bool)buffer;
-    }
-    buffer_type* operator ->() {
-        assert(buffer);
-        return buffer.get();
-    }
-    buffer_type& operator *() {
-        assert(buffer);
-        return *buffer;
-    }
-    /// Just creates the buffer and the iterators
-    void initialize() {
-        assert(!buffer);
-        buffer = p_buffer_type(new buffer_type);
-    }
-};
-
-
 template <typename CharType, typename stream_type=std::basic_istream<CharType>>
 class BaseIterator : public std::iterator<std::forward_iterator_tag, CharType> {
 public:
     using char_type = CharType;
     using type = BaseIterator<char>;
-    using Buffer = Buffer<type, char_type>;
+    using buffer_type = std::vector<char_type>;
+    using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
+    using size_type = typename buffer_type::size_type;
+    using buffer_offset = size_type;
 private:
     stream_type* stream = nullptr;
     char_type value = 0;
-    Buffer buffer;
-    typename Buffer::buffer_offset buf_pos{};
+    p_buffer_type buffer;
+    buffer_offset buf_pos{};
 
     /// Returns true if we can't be incremented any more
     bool isEOF() const {
@@ -114,7 +86,7 @@ public:
         if (!stream)
             return;
         if (!buffer) {
-            buffer.initialize();
+            buffer = p_buffer_type(new buffer_type);
             const_cast<type&>(other).buffer = buffer;
         }
     }
