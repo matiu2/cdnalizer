@@ -56,8 +56,7 @@ public:
     using type = BaseIterator<char>;
     using buffer_type = std::vector<char_type>;
     using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
-    using size_type = typename buffer_type::size_type;
-    using buffer_offset = size_type;
+    using buffer_offset = typename buffer_type::size_type;
 private:
     stream_type* stream = nullptr;
     char_type value = 0;
