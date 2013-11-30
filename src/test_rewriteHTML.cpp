@@ -43,30 +43,34 @@ go_bandit([](){
         new_blocks.clear();
     });
 
+    // Returns true if nothing is changed after running doRewrite
+    auto ensureNoChange = [&](const std::string& data) {
+        Iterator end = doRewrite(data.cbegin(), data.cend());
+        AssertThat(end, Is().EqualTo(data.cend()));
+        AssertThat(unchanged_blocks.size(), Is().EqualTo((size_t)1));
+        auto block = unchanged_blocks.at(0);
+        AssertThat(block.sequence, Is().EqualTo((size_t)1));
+        AssertThat(block.start, Is().EqualTo(data.cbegin()));
+        AssertThat(block.end, Is().EqualTo(data.cend()));
+    };
+
     describe("Simple Rewrite HTML", [&](){
 
         it("Returns unchanged when there are no tags", [&](){
             const std::string data{"There are no tags here"};
-            Iterator end = doRewrite(data.cbegin(), data.cend());
-            assert(end == data.cend());
-            AssertThat(unchanged_blocks.size(), Is().EqualTo((size_t)1));
-            auto block = unchanged_blocks.at(0);
-            AssertThat(block.sequence, Is().EqualTo((size_t)1));
-            AssertThat(block.start, Is().EqualTo(data.cbegin()));
-            AssertThat(block.end, Is().EqualTo(data.cend()));
+            ensureNoChange(data);
         });
 
         it("Returns unchanged when we don't find the tags in the library", [&](){
             const std::string data{R"**("This is <some funny="tag">that</some> <we dont="care"/> about")**"};
-            Iterator end = doRewrite(data.cbegin(), data.cend());
-            assert(end == data.cend());
-            AssertThat(unchanged_blocks.size(), Is().EqualTo((size_t)1));
-            auto block = unchanged_blocks.at(0);
-            AssertThat(block.sequence, Is().EqualTo((size_t)1));
-            AssertThat(block.start, Is().EqualTo(data.cbegin()));
-            AssertThat(block.end, Is().EqualTo(data.cend()));
+            ensureNoChange(data);
         });
-        
+
+        it("Ignores attributes we don't care about", [&](){
+            const std::string data{R"**("<a src="/images/a.gif"><img href="/images/bad.link" />bad attribute name</a>")**"};
+            ensureNoChange(data);
+        });
+
     });
 });
 
