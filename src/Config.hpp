@@ -84,9 +84,14 @@ public:
     /// @return the attribute that we care about for a tag name, or an empty string if not found
     template <typename iterator>
     const std::string& getAttrib(const pair<iterator>& tag) const { return lookup(tag_attrib, tag); }
-    /// Finds a close match. If you're searching for /images/abc.gif, and we have '/images' you'll get that.
+    /// Finds the apprpriate path base. If you're searching for /images/abc.gif, and we have '/images' in the config you'll get that.
     /// @return the key that was matched, and the CDN url for that we should be serving
     CDNPair findCDNUrl(const std::string& tag) const { return search(path_url, tag); }
+    /// Add a path-url pair, for later lookup
+    void addPath(const std::string& path, const std::string& url) {
+        path_url.insert(std::make_pair(path, url));
+    }
+
 };
 
 }
