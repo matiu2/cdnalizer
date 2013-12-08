@@ -91,7 +91,6 @@ public:
     void addPath(const std::string& path, const std::string& url) {
         path_url.insert(std::make_pair(path, url));
     }
-
 };
 
 }
