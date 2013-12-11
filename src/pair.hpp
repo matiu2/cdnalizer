@@ -25,9 +25,7 @@ struct pair : std::pair<iterator, iterator> {
     /// Subscript into the selection
     char operator[](size_t i) const {
         auto output = this->first;
-        size_t j=0;
-        while ((output++ != this->second) && (j++ < i));
-        assert(j == i);
+        while ((i-- > 0) && (output++ != this->second));
         return *output;
     }
     /// @returns true if we have some data

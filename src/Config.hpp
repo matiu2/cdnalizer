@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <iostream>
 
 #include "pair.hpp"
 
@@ -28,6 +29,8 @@ class Config {
 public:
     using Container = std::map<std::string, std::string>;
     using CDNPair = std::pair<const std::string&, const std::string&>;
+    /// Thrown when we can't find a suitable CDN url for a base path
+    struct NotFound {};
 private:
     /// Map of paths to urls, eg. {{"/images/", "http://cdn.supa.ws/images/"}}
     Container path_url;
@@ -67,7 +70,16 @@ private:
         // upper_bound always returns one after the one we want,
         // wether the key is an exact match or not
         auto result = upper_bound(container.cbegin(), container.cend(), tag);
-        return *--result;
+        if (result == container.cbegin())
+            throw NotFound();
+        std::cout << "Search '" << tag << "' - ";
+        --result;
+        std::cout << " found: " << result->first << std::endl;
+        std::cout << "List:" << std::endl;
+        for (const auto& pair : container)
+            std::cout << pair.first << std::endl;
+        std::cout << std::endl;
+        return *result;
     }
 public:
     /** Initialize the configuration.
@@ -88,7 +100,7 @@ public:
     /// @return the key that was matched, and the CDN url for that we should be serving
     CDNPair findCDNUrl(const std::string& tag) const { return search(path_url, tag); }
     /// Add a path-url pair, for later lookup
-    void addPath(const std::string& path, const std::string& url) {
+    void addPath(std::string path, std::string url) {
         path_url.insert(std::make_pair(path, url));
     }
 };

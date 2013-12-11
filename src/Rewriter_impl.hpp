@@ -191,40 +191,50 @@ struct Rewriter {
      * @param nextNoChangeStart The start of the next 'noChange' event's range. We may change it.
      *
      */
-    void handleAttributeValue(pair attrib_range, iterator& nextNoChangeStart) {
+    void handleAttributeValue(const pair& attrib_range, iterator& nextNoChangeStart) {
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
         auto value_putter = std::back_inserter(attrib_value);
         if (is_relative(attrib_range)) {
             // Prepend the attrib value with our current location if it's a relative path
             std::copy(location.begin(), location.end(), value_putter);
+            if (location.back() != '/')
+                *value_putter++ = '/';
         }
         std::copy(attrib_range.first, attrib_range.second, value_putter);
 
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
-        auto found = config.findCDNUrl(attrib_value);
-        const std::string& base_path=found.first;
-        const std::string& cdn_url=found.second;
-        // Check if the path we found is a substring of the value
-        if (attrib_value.length() > base_path.length()) {
-            auto match = std::mismatch(base_path.begin(), base_path.end(), attrib_value.begin());
-            if (match.first == base_path.end()) {
-                // If the attribute value starts with the base_path, replace the bit after with the new cdn url
-                std::string result;
-                result.reserve(cdn_url.length() + attrib_value.length() - base_path.length());
-                auto out = back_inserter(result);
-                std::copy(cdn_url.begin(), cdn_url.end(), out);
-                // Push it out
-                // Make sure we got given actual event handlers
-                assert(noChange);
-                assert(newData);
-                // Output the unchanged bits
-                noChange(nextNoChangeStart, attrib_range.first);
-                // Send on the new data
-                newData(cdn_url);
-                nextNoChangeStart = ++(attrib_range.second); // Next time the 'unchanged data' will start with the '"' after the attribute value
-            }        
+        try {
+            auto found = config.findCDNUrl(attrib_value);
+            const std::string& base_path=found.first;
+            const std::string& cdn_url=found.second;
+            // Check if the path we found is a substring of the value
+            if (attrib_value.length() > base_path.length()) {
+                auto match = std::mismatch(base_path.cbegin(), base_path.cend(), attrib_value.begin());
+                if (match.first == base_path.cend()) {
+                    // If the attribute value starts with the base_path, replace the bit after with the new cdn url
+                    std::string result;
+                    result.reserve(cdn_url.length() + attrib_value.length() - base_path.length());
+                    auto out = back_inserter(result);
+                    std::copy(cdn_url.begin(), cdn_url.end(), out);
+                    // Push it out
+                    // Make sure we got given actual event handlers
+                    assert(noChange);
+                    assert(newData);
+                    // Output the unchanged bits
+                    noChange(nextNoChangeStart, attrib_range.first);
+                    // Send on the new data
+                    newData(cdn_url);
+                    // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
+                    nextNoChangeStart = attrib_range.first; 
+                    // TODO: Just make the algo need a random access iterator ? Have a template func that can just + base_path.length() ?
+                    for(size_t i=0; i < base_path.length(); ++i)
+                        ++nextNoChangeStart;
+                }        
+            }
+        } catch (Config::NotFound) {
+            return; // We can't replace that path, just carry on..
         }
     }
 
@@ -236,7 +246,7 @@ struct Rewriter {
      * @return true of 'path' is relative or empty
      **/
     bool is_relative(const pair& path) {
-        if (path)
+        if (!path)
             return false; // Empty path
         if (path[0] == '/')
             return false; // Absolute path
