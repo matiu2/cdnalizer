@@ -21,14 +21,13 @@ namespace apache {
  *
  */
 template <typename SubIterator, typename Block, typename CharType=typename SubIterator::value_type>
-class AbstractBlockIterator {
-public:
+struct AbstractBlockIterator {
     using type=AbstractBlockIterator<SubIterator, Block, CharType>;
     using value_type=CharType;
-private:
+
     Block block;
     SubIterator position;
-public:
+
     AbstractBlockIterator() = default;
     AbstractBlockIterator(const Block& block, SubIterator position={}) : block{block}, position{position} {}
     AbstractBlockIterator(const type& other) = default;
@@ -50,8 +49,6 @@ public:
         result++;
         return result;
     }
-    const Block& getBlock() { return block; }
-    const SubIterator& getPos() { return position; }
 };
 
 
@@ -100,14 +97,24 @@ public:
             return (bb == nullptr) || (other.bb == nullptr) || (bb == other.bb);
         return (bb == other.bb) && (bucket == other.bucket);
     }
+    /// Splits the block in half
+    void split(char* pos) {
+        apr_bucket_split(block, pos);
+        length = pos - data;
+    }
 };
 
 // Forward iterator working on Apache bucket Brigades
-struct Iterator : AbstractBlockIterator<char*, BucketWrapper, char>  {};
+struct Iterator : AbstractBlockIterator<char*, BucketWrapper, char>  {
+    Iterator() = default;
+    Iterator(const BucketWrapper& bucket, char* position={}) : AbstractBlockIterator(bucket, position) {}
+    Iterator(const Iterator& other) = default;
+    void split() { blocks.split(position); }
+};
 
 /// Convenience function to return the (one after the last) Iterator in a brigade
 Iterator EndIterator(apr_bucket_brigade* bb) {
-    return Iterator{bb, APR_BRIGADE_SENTINEL(bb)};
+    return Iterator{BucketWrapper{bb, APR_BRIGADE_SENTINEL(bb)}, 0};
 }
 
 }

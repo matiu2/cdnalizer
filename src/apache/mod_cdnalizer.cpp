@@ -72,7 +72,6 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 
     using cdnalizer::apache::Iterator;
     using cdnalizer::apache::EndIterator;
-    using rewrite = cdnalizer::rewriteHTML<Iterator>;
 
     Iterator start{bb};
     Iterator end = EndIterator(bb);
@@ -80,7 +79,7 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 
     // Called when we find a range of unchanged data
     auto onUnchangedData = [&](Iterator start, Iterator end) {
-
+        apr_bucket_split(end.block;
 
 
     };
@@ -89,7 +88,7 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 
     };
 
-    Iterator final = rewrite(
+    Iterator final = cdnalizer::rewriteHTML<Iterator, char>(
 
 
 
