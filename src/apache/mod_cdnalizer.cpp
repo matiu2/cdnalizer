@@ -39,6 +39,7 @@
 
 #include "../Rewriter.hpp"
 #include "iterator.hpp"
+#include "utils.hpp"
 
 extern "C" {
 #include "httpd.h"
@@ -72,6 +73,7 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 
     using cdnalizer::apache::Iterator;
     using cdnalizer::apache::EndIterator;
+    using cdnalizer::apache::BrigadeGuard;
 
     Iterator start{bb};
     Iterator end = EndIterator(bb);
@@ -79,19 +81,35 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 
     // Called when we find a range of unchanged data
     auto onUnchangedData = [&](Iterator start, Iterator end) {
-        apr_bucket_split(end.block;
-
-
+        end.split(); // end's bucket now stops at pos
+        // We'll return the start of the new next bucket
+        Iterator result = end;
+        ++result;
+        // It's unlikely (impossible?) that we're gonna have to split the start bucket
+        assert(start.isAtStartOfBlock());
+        // Flush everything from start
+        BrigadeGuard tmpbb; // Make a temporary brigade
+        apr_bucket* bucket = start.block.bucket();
+        apr_bucket* end = end.block.bucket();
+        // Move all the buckets to the next brigade
+        while (bucket != end) {
+            apr_bucket* next = APR_BUCKET_NEXT(bucket);
+            APR_BRIGADE_REMOVE(bucket);
+            APR_BRIGADE_INSERT_TAIL(bucket);
+            bucket = next;
+        }
+        // Send the next brigade to the next filter
+        ap_pass_brigade(filter, tmpbb);
     };
     // Called when new data to push out the filter arrives
-    auto newData = [&](Iterator start, Iterator end) {
-
+    auto newData = [&](const std::string& data) {
+        BrigadeGuard tmpbb; // Make a temporary brigade
+        // Copy the data to it. Needs to be copied because it's coming from a long lived data dict; not generated.
+        apr_bucket* = apr_bucket_heap_create(data.cstr(), data.size(), NULL, filter->c->bucket_alloc);
+        ap_pass_brigade(filter, tmpbb);
     };
 
     Iterator final = cdnalizer::rewriteHTML<Iterator, char>(
-
-
-
 
     struct State* state = filter->ctx;
     if (state == NULL) {
