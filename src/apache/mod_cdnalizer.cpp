@@ -38,7 +38,8 @@
 */ 
 
 #include "../Rewriter.hpp"
-#include "iterator.hpp"
+#include "../Config.hpp"
+#include "filter.hpp"
 
 extern "C" {
 #include "httpd.h"
@@ -55,73 +56,16 @@ static const command_rec cdnalizer_filter_cmds[] = {
 }
 */
 
-struct State {
-    cdnalizer::apache::Iterator tmpbb;
-};
-
 static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb)
 {
-    /* A bucket is a bunch of data
-       A brigade is a bunch of buckets
-       Each web page is made up of one or more brigades
-       The filter->ctx lives for the life of that page */
-    /* Don't pass empty brigodes down the line */ 
-    if (APR_BRIGADE_EMPTY(bb)) {
-        return APR_SUCCESS;
+    try {
+        return cdnalizer::apache::filter(filter, bb);
+    } catch (cdnalizer::apache::ApacheException& e) {
+        return e.code;
+    } catch (...) {
+        // C doesn't have exceptions, so just let it know something weird went wrong
+        return APR_OS_START_USERERR;
     }
-
-    using cdnalizer::apache::Iterator;
-    using cdnalizer::apache::EndIterator;
-    using rewrite = cdnalizer::rewriteHTML<Iterator>;
-
-    Iterator start{bb};
-    Iterator end = EndIterator(bb);
-    Iterator lastPos = start;
-
-    // Called when we find a range of unchanged data
-    auto onUnchangedData = [&](Iterator start, Iterator end) {
-
-
-
-    };
-    // Called when new data to push out the filter arrives
-    auto newData = [&](Iterator start, Iterator end) {
-
-    };
-
-    Iterator final = rewrite(
-
-
-
-
-    struct State* state = filter->ctx;
-    if (state == NULL) {
-        /* This is the first time we've seen this request */
-        filter->ctx = state = apr_palloc(filter->r->pool, sizeof *state);
-        // state->tmpbb = apr_brigade_create(filter->r->pool, filter->c->bucket_alloc);
-        state->tmpbb = NULL;
-    }
-    /* Get the first bucket */
-    apr_bucket *bucket = APR_BRIGADE_FIRST(bb);
-    const char *data;
-    apr_size_t length;
-    while (bucket != APR_BRIGADE_SENTINEL(bb)) {
-        if (APR_BUCKET_IS_EOS(bucket)) {
-            //return handle_last_bucket(bucket, state);
-        }
-        if (APR_BUCKET_IS_FLUSH(bucket)) {
-            //return flush(bucket, state);
-        }
-        if (APR_BUCKET_IS_METADATA(bucket)) {
-            // Just pass this bucket along
-        }
-        apr_status_t status;
-        /* Get the data */
-        status = apr_bucket_read(bucket, &data, &length, APR_BLOCK_READ);
-        /* Push it through our parser and see what the result is */
-        bucket = APR_BUCKET_NEXT(bucket);
-    }
-    return ap_pass_brigade(filter->next, bb);
 }
 
 static void cdnalizer_register_hooks(apr_pool_t *p)
@@ -137,7 +81,7 @@ module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     NULL,                  /* merge  per-dir    config structures */
     NULL,                  /* create per-server config structures */
     NULL,                  /* merge  per-server config structures */
-    /*cdnalizer_filter_cmds, /* table of config file commands       */
+    //cdnalizer_filter_cmds, /* table of config file commands       */
     NULL,
     cdnalizer_register_hooks  /* register hooks                      */
 };

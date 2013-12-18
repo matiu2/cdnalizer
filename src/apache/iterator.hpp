@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <cassert>
 
+#include "utils.hpp"
+
 extern "C" {
 #include <apr_buckets.h>
 }
@@ -53,27 +55,6 @@ public:
     const Block& getBlock() { return block; }
     const SubIterator& getPos() { return position; }
 };
-
-
-/// Turns an apr status code into a c++ exception
-class ApacheException : public std::runtime_error {
-private:
-    std::string static getMessage(apr_status_t code) {
-        char data[256];
-        apr_strerror(code, data, 256);
-        return std::string(data);
-    }
-public:
-    const apr_status_t code;
-    ApacheException(apr_status_t code) 
-        : std::runtime_error(getMessage(code)), code(code) {}
-};
-
-/// Throws an exception if the code is not APR_SUCCESS
-void checkStatusCode(apr_status_t code) {
-    if (code != APR_SUCCESS)
-        throw ApacheException(code);
-}
 
 /// Wraps an APR bucket. Makes it useable in AbstractBlockIterator
 class BucketWrapper {

@@ -29,6 +29,14 @@ struct Rewriter {
 
     const std::string ws=" \t\r\n";
 
+    /**
+     * @param location The path of the request
+     * @param config The configuration object
+     * @param start The start of the data we are to process
+     * @param end one past the last bit of data  
+     * @param noChange Event called when a block of unchanged data is hit. Return the next char we should process.
+     * @param newData Event called with the new port of the attribute value
+     * */
     Rewriter(
         const std::string& location,
         const Config& config,
@@ -53,7 +61,7 @@ struct Rewriter {
                 auto tag_start = std::find(pos, end, '<');
                 if (tag_start == end)
                     // There are no more tags, send all the data
-                    throw Done{end};
+                    throw Done{tag_start};
                 auto next = tag_start;
                 if (++next == end)
                     // The tag is just before the end of the data, send everything before it
@@ -71,12 +79,7 @@ struct Rewriter {
                 // We found a tag
                 pair tag{tag_start, tag_end};
                 handleTag(tag, nextNoChangeStart);
-                // Now that we've handled the tag, continue searching from just past the end of it
-                if (*tag_end == '>')
-                    pos = tag.second; 
-                else
-                    // If we ended this tag by starting another, don't skip over it
-                    pos = tag_end;
+                pos = nextNoChangeStart;
             }
         } catch (Done e) {
             // We can push out the nuchanged data now
@@ -94,7 +97,8 @@ struct Rewriter {
      * the attribute value.
      *
      * @param tag The tag that we found
-     * @param nextNoChangeStart The place where one kkk
+     * @param nextNoChangeStart the start of the next block of unchanged data
+     *
      * */
     void handleTag(const pair& tag, iterator& nextNoChangeStart) {
         // Get the tag name
@@ -223,11 +227,10 @@ struct Rewriter {
                     assert(noChange);
                     assert(newData);
                     // Output the unchanged bits
-                    noChange(nextNoChangeStart, attrib_range.first);
+                    nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
                     // Send on the new data
                     newData(cdn_url);
-                    // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
-                    nextNoChangeStart = attrib_range.first; 
+                    // Fast forward the iterator over the old value of the attribute
                     // TODO: Just make the algo need a random access iterator ? Have a template func that can just + base_path.length() ?
                     for(size_t i=0; i < base_path.length(); ++i)
                         ++nextNoChangeStart;
