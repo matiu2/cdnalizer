@@ -79,7 +79,8 @@ struct Rewriter {
                 // We found a tag
                 pair tag{tag_start, tag_end};
                 handleTag(tag, nextNoChangeStart);
-                pos = nextNoChangeStart;
+                pos = tag_end;
+                ++pos;
             }
         } catch (Done e) {
             // We can push out the nuchanged data now
