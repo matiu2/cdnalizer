@@ -60,7 +60,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     using cdnalizer::apache::BrigadeGuard;
 
     /// Move buckets to a new brigade
-    auto moveBuckets = [&](Iterator a, Iterator b, apr_bucket_brigade* dest) {
+    auto moveBuckets = [&](const Iterator a, const Iterator b, apr_bucket_brigade* dest) {
         apr_bucket* bucket = a.split();
         apr_bucket* last_bucket = b.split();
         // Return the char after what b was pointing at
@@ -80,7 +80,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     Iterator end{EndIterator(bb)};
 
     // Called when we find a range of unchanged data
-    auto onUnchangedData = [&](Iterator start, Iterator end) {
+    auto onUnchangedData = [&](const Iterator& start, const Iterator& end) {
         // Move buckets from start up to the current into our completed_work brigade
         return moveBuckets(start, end, completed_work);
     };

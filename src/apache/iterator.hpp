@@ -113,10 +113,10 @@ public:
         return (bb == other.bb) && (bucket == other.bucket);
     }
     /// Splits the bucket at @pos
-    apr_bucket* split(const char* pos) {
+    apr_bucket* split(const char* pos) const {
         if ((pos != data) && (pos != data + length)) {
             apr_bucket_split(bucket, pos-data);
-            checkStatusCode(apr_bucket_read(bucket, &data, &length, APR_BLOCK_READ));
+            checkStatusCode(apr_bucket_read(bucket, const_cast<const char**>(&data), const_cast<apr_size_t*>(&length), APR_BLOCK_READ));
         }
         return bucket;
     }
@@ -135,7 +135,7 @@ struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, char>  {
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
     /// Splits the block at the current position.
-    apr_bucket* split() { return block.split(position); }
+    apr_bucket* split() const { return block.split(position); }
 };
 
 /// Convenience function to return the (one after the last) Iterator in a brigade
