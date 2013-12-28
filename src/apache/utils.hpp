@@ -44,6 +44,7 @@ public:
     const apr_bucket_brigade& operator ->() const { return *bb; }
     operator apr_bucket_brigade*() { return bb; }
     operator apr_bucket_brigade&() { return *bb; }
+    apr_bucket_brigade* brigade() { return bb; }
 };
 
 

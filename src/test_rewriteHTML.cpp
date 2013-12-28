@@ -68,6 +68,7 @@ go_bandit([](){
 
     RangeEvent<Iterator> unchanged = [&](Iterator start, Iterator end) {
         unchanged_blocks.push_back(SequencedIteratorPair{sequence++, start, end});
+        return end;
     };
 
     DataEvent newData = [&](std::string data) {

@@ -227,10 +227,10 @@ struct Rewriter {
                     assert(noChange);
                     assert(newData);
                     // Output the unchanged bits
+                    // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
                     nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
                     // Send on the new data
                     newData(cdn_url);
-                    // Fast forward the iterator over the old value of the attribute
                     // TODO: Just make the algo need a random access iterator ? Have a template func that can just + base_path.length() ?
                     for(size_t i=0; i < base_path.length(); ++i)
                         ++nextNoChangeStart;

@@ -2,6 +2,7 @@
 #include "../Rewriter.hpp"
 #include "../Config.hpp"
 #include "utils.hpp"
+#include "iterator.hpp"
 
 extern "C" {
 #include <apr_buckets.h>
@@ -11,7 +12,6 @@ extern "C" {
 namespace cdnalizer {
 namespace apache {
 
-
 /** This function is the apache output filter.
  * It filters a bucket brigade (usually 8k of html content, broken into chunks (buckets), then
  * passes that on to the next filter.
@@ -20,7 +20,7 @@ namespace apache {
  * @param bb The bucket brigade we're working on
  * @returns an apache status code
  */
-static apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
+apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // Just pass on empty brigades
     if (APR_BRIGADE_EMPTY(bb)) { return APR_SUCCESS; }
 
@@ -36,130 +36,76 @@ static apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         {"/aac", "http://cdn.supa.ws/aac"}
     }};
 
-    // Make a fresh, RAII protected Apache Bucket Brigade
-    auto makeBB = [&]() {
-        return BrigadeGuard(filter->r->pool, filter->c->bucket_alloc);
+    // Work to be sent to the next filter on flush or ending
+    BrigadeGuard completed_work{filter->r->pool, filter->c->bucket_alloc};
+
+    // Called when we need to flush our completed work
+    auto flush = [&]() {
+        auto result = ap_pass_brigade(filter, completed_work);
+        apr_brigade_cleanup(completed_work);
+        return result;
     };
 
-    // Place to store any left over work
+    // See if there's any work left over from last time
     apr_bucket_brigade* leftover_work = static_cast<apr_bucket_brigade*>(filter->ctx);
-    if (leftover_work == NULL) {
-        // This is the 1st time we've seen this request. Make a place to store any left over data
-        filter->ctx = leftover_work = static_cast<apr_bucket_brigade*>(apr_brigade_create(filter->r->pool, filter->c->bucket_alloc));
-    }  else if (!APR_BRIGADE_EMPTY(leftover_work)) {
+    if (leftover_work && !APR_BRIGADE_EMPTY(leftover_work)) {
         // Get left over work from last time ?
-        apr_bucket* leftovers = APR_BRIGADE_FIRST(leftover_work);
-        APR_BUCKET_REMOVE(leftovers);
-        APR_BRIGADE_INSERT_HEAD(bb, leftovers);
+        apr_bucket* leftover_bucket = APR_BRIGADE_FIRST(leftover_work);
+        APR_BUCKET_REMOVE(leftover_bucket);
+        APR_BRIGADE_INSERT_HEAD(bb, leftover_bucket);
         assert(APR_BRIGADE_EMPTY(leftover_work)); // There should only ever be zero or one buckets left over
     }
+    using cdnalizer::apache::Iterator;
+    using cdnalizer::apache::EndIterator;
+    using cdnalizer::apache::BrigadeGuard;
 
-    // Work to be sent to the next filter on flush or ending
-    BrigadeGuard completed_work = makeBB();
-
-    // Shared vars
-    apr_bucket *bucket;   // The current bucket
-    const char *data;     // The current data block
-    apr_size_t length;    // The length of the current data block
-
-    // Custom exceptions
-    struct NoMoreBuckets {}; // Thrown when we hit the last bucket
-    struct EndOfRequest {};  // Thrown when we have eaten all the data in the request
-
-    // Sub Functions that use the shared vars //
-
-    auto flush = [&]() {
-        /// Send our completed_work to the next filter
-        checkStatusCode(ap_pass_brigade(filter, completed_work));
-        completed_work = makeBB();
+    /// Move buckets to a new brigade
+    auto moveBuckets = [&](Iterator a, Iterator b, apr_bucket_brigade* dest) {
+        apr_bucket* bucket = a.split();
+        apr_bucket* last_bucket = b.split();
+        // Return the char after what b was pointing at
+        Iterator result{b};
+        assert(b.split() == result.split()); // Should have same bucket here
+        ++result;
+        assert(b.split() != result.split()); // result should have a new bucket here
+        do {
+            APR_BUCKET_REMOVE(bucket);
+            APR_BRIGADE_INSERT_TAIL(dest, bucket);
+            bucket = APR_BUCKET_NEXT(bucket);
+        } while (bucket != last_bucket);
+        return result;
     };
 
-    auto save = [&]() {
-        /// Move the current bucket into our saved_work stream
-        APR_BUCKET_REMOVE(bucket);
-        APR_BRIGADE_INSERT_TAIL((apr_bucket_brigade*)completed_work, bucket);
-    };
-
-    auto next = [&]() {
-        /// Get the next data bucket. Fill in 'data' and 'length'
-        start:
-            // As we move completed work out of bb, we always get the first bucket
-            bucket = APR_BRIGADE_FIRST(bb);
-            // Did we hit one past the end ?
-            if (bucket == APR_BRIGADE_SENTINEL(bb))
-                throw NoMoreBuckets();
-            // Is this the end of the request ?
-            if (APR_BUCKET_IS_EOS(bucket))
-                throw EndOfRequest();
-            // Do we need to flush
-            if (APR_BUCKET_IS_FLUSH(bucket)) {
-                flush();
-                goto start;
-            }
-            // Ignore metadata buckets
-            if (APR_BUCKET_IS_METADATA(bucket)) {
-                save();
-                goto start;
-            }
-        // Read the data
-        checkStatusCode(apr_bucket_read(bucket, &data, &length, APR_BLOCK_READ));
-    };
-
-    // Event Handlers //////////////////////
+    Iterator beginning{bb, flush};
+    Iterator end{EndIterator(bb)};
 
     // Called when we find a range of unchanged data
-    auto onUnchangedData = [&](const char* start, const char* end) {
-        // Move work to completed work
-        assert(start == data);
-        // Split the bucket if we need to
-        if (end != data+length)
-            apr_bucket_split(bucket, end-data);
-        // Send the bucket to 'done_work'
-        save();
-        next();
-        return data; // Continue at the start of the new bucket
+    auto onUnchangedData = [&](Iterator start, Iterator end) {
+        // Move buckets from start up to the current into our completed_work brigade
+        return moveBuckets(start, end, completed_work);
     };
 
-    // Called when new data arrives (new html attribute value parts)
-    auto onNewData = [&](const std::string& data) {
-        // 'data' lives as long as our config which will certainly be longer than the bucket brigade
-        apr_bucket* newBucket = apr_bucket_immortal_create(data.c_str(), data.length(), filter->c->bucket_alloc);
-        APR_BRIGADE_INSERT_TAIL((apr_bucket_brigade*)completed_work, newBucket);
+    // Called when new data to push out the filter arrives
+    auto newData = [&](const std::string& data) {
+        // Create a new bucket to append to completed work
+        // Copy the data to it. Needs to be copied because it's coming from a long lived data dict; not generated.
+        apr_bucket* bucket = apr_bucket_heap_create(data.c_str(), data.size(), NULL, filter->c->bucket_alloc);
+        APR_BRIGADE_INSERT_TAIL(completed_work.brigade(), bucket);
     };
 
-    // Main processing loop
-    try {
-        while (1) {
-            next(); // Get the next bucket of data
-            // Filter it
-            const char* tag_start = rewriteHTML<const char*>(
-                location, config, data, data+length, onUnchangedData, onNewData);
-            // The algorithm should always push a 'onChange' event at the end, that will nullify
-            // the current bucket, and get the next automatically.
-            // If there is no next bucket, it'll throw and this line will never be hit
-            // So there should be one bucket left at this point, and it'll contain the
-            // start of tag that has no ending.
-            assert(tag_start == data);
-            // tag_start is either the start of a tag that we couldn't find an ending to,
-            // or the actual end of this bucket's data
-            // Put the leftovers in a bucket for later
-            APR_BUCKET_REMOVE(bucket);
-            APR_BRIGADE_INSERT_TAIL((apr_bucket_brigade*)completed_work, bucket);
-        }
-    } catch(EndOfRequest) {
-        // There is no more data and we won't be called again
-        // Flush our leftovers
-        flush();
-        if (!APR_BRIGADE_EMPTY(leftover_work)) {
-            checkStatusCode(ap_pass_brigade(filter, completed_work));
-        }
-        // Kill the context and everthing
-        checkStatusCode(apr_brigade_destroy(leftover_work));
-    } catch(NoMoreBuckets) {
-        // No more data in this brigade. But we'll be called again
-        flush();
+    // Do the actual rewriting now
+    Iterator tag_start = rewriteHTML<Iterator>(
+        location, config, beginning, end, onUnchangedData, newData);
+
+    // Store any left over data for next time
+    if (tag_start != end) {
+        if (!leftover_work)
+            filter->ctx = leftover_work = static_cast<apr_bucket_brigade*>(apr_brigade_create(filter->r->pool, filter->c->bucket_alloc));
+        moveBuckets(tag_start, end, leftover_work);
     }
-    return APR_SUCCESS;
+    
+    // Send all our comleted work to the next filter
+    return flush();
 }
 
 }

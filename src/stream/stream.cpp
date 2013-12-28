@@ -19,7 +19,7 @@ void rewriteHTML(const std::string& location,
     std::ostream_iterator<char> out(output);
 
     // Event handlers
-    auto noChange = [&out](Iterator a, Iterator b) { std::copy(a, b, out); };
+    auto noChange = [&out](Iterator a, Iterator b) { std::copy(a, b, out); return b; };
     auto newData = [&output](const std::string& data) { output << data; };
     
     // Parse the html

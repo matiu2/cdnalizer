@@ -38,7 +38,6 @@
 */ 
 
 #include "../Rewriter.hpp"
-#include "../Config.hpp"
 #include "filter.hpp"
 
 extern "C" {
@@ -60,10 +59,7 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
 {
     try {
         return cdnalizer::apache::filter(filter, bb);
-    } catch (cdnalizer::apache::ApacheException& e) {
-        return e.code;
     } catch (...) {
-        // C doesn't have exceptions, so just let it know something weird went wrong
         return APR_OS_START_USERERR;
     }
 }
