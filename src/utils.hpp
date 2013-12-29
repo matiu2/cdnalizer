@@ -42,5 +42,6 @@ std::pair<iter1, iter2> mismatch(iter1 first1, iter1, iter2 last1, iter2 first2,
         { ++first1; ++first2; }
     return std::make_pair(first1,first2);
 }
+
 }
 }

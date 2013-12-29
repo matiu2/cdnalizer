@@ -37,7 +37,7 @@
 **    The sample page from mod_cdnalizer.c
 */ 
 
-#include "../Rewriter.hpp"
+#include "../Rewriter_impl.hpp"
 #include "filter.hpp"
 
 extern "C" {
@@ -64,7 +64,7 @@ static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade 
     }
 }
 
-static void cdnalizer_register_hooks(apr_pool_t *p)
+static void cdnalizer_register_hooks(apr_pool_t *)
 {
     ap_register_output_filter(cdnalizer_filter_name, cdnalize_out_filter, NULL,
                               AP_FTYPE_CONTENT_SET);
@@ -82,4 +82,15 @@ module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     cdnalizer_register_hooks  /* register hooks                      */
 };
 
+
+}
+
+namespace cdnalizer {
+namespace apache {
+
+Iterator rewriteHTML(const std::string& location, const Config& config,
+                 Iterator start, Iterator end,
+                 RangeEvent<Iterator> noChange, DataEvent newData);
+
+}
 }

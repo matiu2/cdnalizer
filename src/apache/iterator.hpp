@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <cassert>
+#include <iterator>
 
 #include "utils.hpp"
 
@@ -24,7 +25,7 @@ namespace apache {
  *
  */
 template <typename SubIterator, typename Block, typename CharType=typename SubIterator::value_type>
-struct AbstractBlockIterator {
+struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, char> {
     using type=AbstractBlockIterator<SubIterator, Block, CharType>;
     using value_type=CharType;
 
@@ -47,13 +48,13 @@ struct AbstractBlockIterator {
         }
         return *this;
     }
-    type operator++ (int) {
+    type operator++ (int) const {
         type result(*this);
         ++result;
         return result;
     }
-    bool operator ==(const type& other) { return block == other.block; }
-    bool operator !=(const type& other) { return !(*this == other); }
+    bool operator ==(const type& other) const { return block == other.block; }
+    bool operator !=(const type& other) const { return !(*this == other); }
     bool isAtStartOfBlock() const { return position == block.begin(); }
 };
 
@@ -129,13 +130,27 @@ public:
 };
 
 // Forward iterator working on Apache bucket Brigades
-struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, char>  {
+struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char>  {
+    using Base = AbstractBlockIterator<const char*, BucketWrapper, const char>;
     Iterator() = default;
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : AbstractBlockIterator({bb, onFlush, bucket}, position) {}
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
     /// Splits the block at the current position.
     apr_bucket* split() const { return block.split(position); }
+    Iterator& operator++() {
+        ++position;
+        if (position == block.end()) {
+            ++block;
+            position = block.begin();
+        }
+        return *this;
+    }
+    Iterator operator++ (int) const {
+        Iterator result(*this);
+        ++result;
+        return result;
+    }
 };
 
 /// Convenience function to return the (one after the last) Iterator in a brigade

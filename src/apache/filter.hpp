@@ -1,3 +1,4 @@
+#pragma once
 /** Actually does the work of the filter */
 #include "../Rewriter.hpp"
 #include "../Config.hpp"

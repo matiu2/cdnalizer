@@ -1,5 +1,5 @@
-#pragma once
 /** Utilitiies to help make the C more ++ier */
+#pragma once
 
 #include <cassert>
 #include <memory>
