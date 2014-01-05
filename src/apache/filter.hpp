@@ -42,7 +42,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     // Called when we need to flush our completed work
     auto flush = [&]() {
-        auto result = ap_pass_brigade(filter, completed_work);
+        auto result = ap_pass_brigade(filter->next, completed_work);
         apr_brigade_cleanup(completed_work);
         return result;
     };
@@ -60,25 +60,34 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     using cdnalizer::apache::EndIterator;
     using cdnalizer::apache::BrigadeGuard;
 
+    Iterator beginning{bb, flush};
+    Iterator end{EndIterator(bb)};
+
     /// Move buckets to a new brigade
-    auto moveBuckets = [&](const Iterator a, const Iterator b, apr_bucket_brigade* dest) {
+    auto moveBuckets = [&](Iterator a, Iterator b, apr_bucket_brigade* dest) {
         apr_bucket* bucket = a.split();
         apr_bucket* last_bucket = b.split();
         // Return the char after what b was pointing at
         Iterator result{b};
         assert(b.split() == result.split()); // Should have same bucket here
-        ++result;
-        assert(b.split() != result.split()); // result should have a new bucket here
-        do {
+        // If it's not already the end of the world, we'll be returning the char after the last iterator
+        if (b != end) {
+            ++result;
+            assert(b.split() != result.split()); // result should have a new bucket here, because it's one after the split
+        }
+        // Move all those buckets into the other brigade
+        while (bucket != last_bucket) {
+            apr_bucket* next = APR_BUCKET_NEXT(bucket);
             APR_BUCKET_REMOVE(bucket);
             APR_BRIGADE_INSERT_TAIL(dest, bucket);
-            bucket = APR_BUCKET_NEXT(bucket);
-        } while (bucket != last_bucket);
+            bucket = next;
+        }
         return result;
     };
 
-    Iterator beginning{bb, flush};
-    Iterator end{EndIterator(bb)};
+    // We could get a whole bunch of non-data buckets. The brigade would be technically not empty, but practically empty for our purposes
+    if (beginning == end)
+        return flush();
 
     // Called when we find a range of unchanged data
     auto onUnchangedData = [&](const Iterator& start, const Iterator& end) {

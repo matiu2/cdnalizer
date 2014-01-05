@@ -95,7 +95,7 @@ public:
     BaseIterator() {}
     char_type operator *() { return value; }
     char_type* operator ->() { return &value; }
-    type& operator++() {
+    type& operator ++() {
         assert(stream); // Can't be called on read and throw away versions
         // If we have no buffer, read from the stream
         if (!buffer) {
