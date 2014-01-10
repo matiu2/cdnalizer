@@ -42,7 +42,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     // Called when we need to flush our completed work
     auto flush = [&]() {
-        auto result = ap_pass_brigade(filter->next, completed_work);
+        apr_status_t result = ap_pass_brigade(filter->next, completed_work);
         apr_brigade_cleanup(completed_work);
         return result;
     };
@@ -69,14 +69,15 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         apr_bucket* last_bucket = b.split();
         // Return the char after what b was pointing at
         Iterator result{b};
-        assert(b.split() == result.split()); // Should have same bucket here
+        assert(b.bucket() == result.bucket()); // Should have same bucket here
         // If it's not already the end of the world, we'll be returning the char after the last iterator
         if (b != end) {
             ++result;
-            assert(b.split() != result.split()); // result should have a new bucket here, because it's one after the split
+            assert(last_bucket != result.bucket()); // result should have a new bucket here, because it's one after the split
         }
+        apr_bucket* sentinel = APR_BUCKET_NEXT(last_bucket);
         // Move all those buckets into the other brigade
-        while (bucket != last_bucket) {
+        while (bucket != sentinel) {
             apr_bucket* next = APR_BUCKET_NEXT(bucket);
             APR_BUCKET_REMOVE(bucket);
             APR_BRIGADE_INSERT_TAIL(dest, bucket);

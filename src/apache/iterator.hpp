@@ -21,17 +21,17 @@ public:
 private:
     apr_bucket_brigade* bb;
     FlushHandler onFlush;
-    apr_bucket* bucket;
+    apr_bucket* _bucket;
     apr_size_t length;
     const char* data;
     /// Inits all our variables for the next bucket
     void init4NewBucket() {
         apr_bucket* sentinel = APR_BRIGADE_SENTINEL(bb);
         // Skip over non-data buckets
-        while (bucket != sentinel) {
-            if (APR_BUCKET_IS_METADATA(bucket)) {
+        while (_bucket != sentinel) {
+            if (APR_BUCKET_IS_METADATA(_bucket)) {
                 // Just skip over the bucket; it'll get pushed along next flush
-            } else if (APR_BUCKET_IS_FLUSH(bucket)) {
+            } else if (APR_BUCKET_IS_FLUSH(_bucket)) {
                 // We should send our completed work on to the next filter
                 if (onFlush)
                     checkStatusCode(onFlush());
@@ -39,25 +39,25 @@ private:
                 // Any other bucket is not skippable
                 break;
             }
-            bucket = APR_BUCKET_NEXT(bucket);
+            _bucket = APR_BUCKET_NEXT(_bucket);
         }
         // Now we've skipped all the skippable buckets .. see what we can do
-        if (APR_BUCKET_IS_EOS(bucket)) {
+        if (APR_BUCKET_IS_EOS(_bucket)) {
             // There is no data, this is the marker of the end of all data for this request
             // We must send everything over to the next filter
-            bucket = APR_BRIGADE_SENTINEL(bb);
+            _bucket = APR_BRIGADE_SENTINEL(bb);
             length = 0;
             data = nullptr;
             return;
         } else {
             // Get the data out of the bucket if there is any
-            if (bucket != sentinel)
-                checkStatusCode(apr_bucket_read(bucket, &data, &length, APR_BLOCK_READ));
+            if (_bucket != sentinel)
+                checkStatusCode(apr_bucket_read(_bucket, &data, &length, APR_BLOCK_READ));
         }
     }
 public:
     BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush, apr_bucket* bucket)
-    : bb{bb}, onFlush{onFlush}, bucket{bucket}
+    : bb{bb}, onFlush{onFlush}, _bucket{bucket}
     {
         if (bb != nullptr)
             init4NewBucket();
@@ -67,29 +67,34 @@ public:
     const char* begin() const { return data; }
     const char* end() const { return data + length; }
     /// Means we are the sentinel bucket; one past the end .. there is no more data to process
-    bool isSentinel() const { return (bb == nullptr) || (bucket == APR_BRIGADE_SENTINEL(bb)); }
+    bool isSentinel() const { return (bb == nullptr) || (_bucket == APR_BRIGADE_SENTINEL(bb)); }
     bool operator ==(const BucketWrapper& other) const {
         if (isSentinel() && other.isSentinel())
             return (bb == nullptr) || (other.bb == nullptr) || (bb == other.bb);
-        return (bb == other.bb) && (bucket == other.bucket);
+        return (bb == other.bb) && (_bucket == other._bucket);
     }
-    /// Splits the bucket at @pos
+    /** Splits the bucket at @pos.
+     *  If it fails, it leaves us unchanged.
+     *  If it succeeds it leaves us with a bucket where the char before pos is the last character; the next bucket's 1st char is now *pos.
+     *  @return Our bucket
+     */
     apr_bucket* split(const char* pos) const {
         if (isSentinel())
-            return bucket; // Don't split the last bucket
+            return _bucket; // Don't split the last bucket
         if ((pos != data) && (pos != data + length)) {
-            apr_bucket_split(bucket, pos-data);
-            checkStatusCode(apr_bucket_read(bucket, const_cast<const char**>(&data), const_cast<apr_size_t*>(&length), APR_BLOCK_READ));
+            apr_bucket_split(_bucket, pos-data);
+            checkStatusCode(apr_bucket_read(_bucket, const_cast<const char**>(&data), const_cast<apr_size_t*>(&length), APR_BLOCK_READ));
         }
-        return bucket;
+        return _bucket;
     }
     // Point to the next bucket
     BucketWrapper& operator ++() {
         assert(!isSentinel()); // Why would you try to go past the end of the sentinel!?
-        bucket = APR_BUCKET_NEXT(bucket);
+        _bucket = APR_BUCKET_NEXT(_bucket);
         init4NewBucket();
         return *this;
     }
+    apr_bucket* bucket() const { return _bucket; }
 };
 
 // Forward iterator working on Apache bucket Brigades
@@ -100,7 +105,17 @@ struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char> 
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
     /// Splits the block at the current position.
-    apr_bucket* split() const { return block.split(position); }
+    /// If succesful, we move to the next block (data we point at stays the same)
+    /// @return the bucket we had before
+    apr_bucket* split() {
+        apr_bucket* result = block.split(position);
+        if (position == block.end()) {
+            ++block;
+            position = block.begin();
+        }
+        return result;
+    }
+    apr_bucket* bucket() const { return block.bucket(); }
     Iterator& operator++() { return static_cast<Iterator&>(Base::operator++()); }
     Iterator operator++ (int) {
         Iterator result(*this);

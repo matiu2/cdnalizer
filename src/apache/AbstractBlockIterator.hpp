@@ -50,8 +50,8 @@ struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, c
     }
     bool operator ==(const type& other) const {
         bool same_block = block == other.block;
-        if (block.isSentinel())
-            return same_block;
+        if (block.isSentinel() && other.block.isSentinel())
+            return true;
         else
             return same_block && (position == other.position);
     }
