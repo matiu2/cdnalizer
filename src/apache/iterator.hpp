@@ -70,7 +70,7 @@ public:
     bool isSentinel() const { return (bb == nullptr) || (_bucket == APR_BRIGADE_SENTINEL(bb)); }
     bool operator ==(const BucketWrapper& other) const {
         if (isSentinel() && other.isSentinel())
-            return (bb == nullptr) || (other.bb == nullptr) || (bb == other.bb);
+            return true; // Assumes all iterators being compared are from the same bucket brigade.
         return (bb == other.bb) && (_bucket == other._bucket);
     }
     /** Splits the bucket at @pos.
@@ -80,7 +80,7 @@ public:
      */
     apr_bucket* split(const char* pos) const {
         if (isSentinel())
-            return _bucket; // Don't split the last bucket
+            return _bucket; // Can't split the one-after-last bucket
         if ((pos != data) && (pos != data + length)) {
             apr_bucket_split(_bucket, pos-data);
             checkStatusCode(apr_bucket_read(_bucket, const_cast<const char**>(&data), const_cast<apr_size_t*>(&length), APR_BLOCK_READ));

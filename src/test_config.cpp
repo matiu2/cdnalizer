@@ -63,8 +63,6 @@ go_bandit([&](){
             AssertThat(aad, !Equals(expected));
             // Add path should work
             cfg.addPath("/aad", "http://cdn.supa.ws/aad");
-            for(const auto& pair : cfg.path_url) 
-                std::cout << pair.first << " - " << pair.second << std::endl;
             Config::CDNPair aad2 = cfg.findCDNUrl("/aad/x.gif");
             AssertThat(aad2, Equals(expected));
         });

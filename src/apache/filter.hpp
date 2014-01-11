@@ -65,17 +65,17 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     /// Move buckets to a new brigade
     auto moveBuckets = [&](Iterator a, Iterator b, apr_bucket_brigade* dest) {
-        apr_bucket* bucket = a.split();
+        // Split the last one 1st, as a split may invalidate all iterators after it
         apr_bucket* last_bucket = b.split();
+        apr_bucket* bucket = a.split();
         // Return the char after what b was pointing at
         Iterator result{b};
         assert(b.bucket() == result.bucket()); // Should have same bucket here
-        // If it's not already the end of the world, we'll be returning the char after the last iterator
-        if (b != end) {
-            ++result;
-            assert(last_bucket != result.bucket()); // result should have a new bucket here, because it's one after the split
-        }
-        apr_bucket* sentinel = APR_BUCKET_NEXT(last_bucket);
+        apr_bucket* sentinel;
+        if (last_bucket == APR_BRIGADE_SENTINEL(bb))
+            sentinel = last_bucket;
+        else
+            sentinel = APR_BUCKET_NEXT(last_bucket);
         // Move all those buckets into the other brigade
         while (bucket != sentinel) {
             apr_bucket* next = APR_BUCKET_NEXT(bucket);
@@ -87,8 +87,10 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     };
 
     // We could get a whole bunch of non-data buckets. The brigade would be technically not empty, but practically empty for our purposes
-    if (beginning == end)
+    if (beginning == end) {
+        moveBuckets(beginning, end, completed_work);
         return flush();
+    }
 
     // Called when we find a range of unchanged data
     auto onUnchangedData = [&](const Iterator& start, const Iterator& end) {

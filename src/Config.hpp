@@ -72,13 +72,7 @@ private:
         auto result = upper_bound(container.cbegin(), container.cend(), tag);
         if (result == container.cbegin())
             throw NotFound();
-        std::cout << "Search '" << tag << "' - ";
         --result;
-        std::cout << " found: " << result->first << std::endl;
-        std::cout << "List:" << std::endl;
-        for (const auto& pair : container)
-            std::cout << pair.first << std::endl;
-        std::cout << std::endl;
         return *result;
     }
 public:

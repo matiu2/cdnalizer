@@ -10,129 +10,62 @@
 
 namespace cdnalizer {
 
-template <typename iterator, typename char_type=char>
-struct Rewriter {
+template <typename iterator, typename char_type>
+iterator rewriteHTML(const std::string& location, const Config& config,
+                     iterator start, iterator end,
+                     RangeEvent<iterator> noChange, DataEvent newData) 
+{
     using pair = cdnalizer::pair<iterator>;
+
     /// An exception we throw when we have finished parsing the input, and catch in the main loop.
     struct Done {
         iterator pos;  /// The character that the next run should start with. (One past the last character we read).
     }; 
 
-    const std::string& location;
-    const Config& config;
-    iterator start;
-    iterator end;
-    
-    // Events
-    RangeEvent<iterator> noChange;
-    DataEvent newData;
+    iterator nextNoChangeStart = start;
 
-    const std::string ws=" \t\r\n";
-
-    /**
-     * @param location The path of the request
-     * @param config The configuration object
-     * @param start The start of the data we are to process
-     * @param end one past the last bit of data  
-     * @param noChange Event called when a block of unchanged data is hit. Return the next char we should process.
-     * @param newData Event called with the new port of the attribute value
-     * */
-    Rewriter(
-        const std::string& location,
-        const Config& config,
-        iterator start,
-        iterator end,
-        
-        // Events
-        RangeEvent<iterator> noChange,
-        DataEvent newData
-    ) : location{location}, config{config}, start{start}, end{end},
-        noChange{noChange}, newData{newData} {}
-
-    /** Run the conversion.
-     * @returns The pointer to the last bit of the data that we actually use
-     */
-    iterator run() {
-        iterator pos = start;
-        iterator nextNoChangeStart = start;
-        try {
-            while (pos != end) {
-                // Find the next tag
-                auto tag_start = std::find(pos, end, '<');
-                if (tag_start == end)
-                    // There are no more tags, send all the data
-                    throw Done{tag_start};
-                auto next = tag_start;
-                if (++next == end)
-                    // The tag is just before the end of the data, send everything before it
-                    throw Done{tag_start};
-                if (*next == '/') {
-                    // This is a closing tag, continue the search
-                    pos = next;
-                    continue;
-                }
-                const std::string tag_ends{"<>"};
-                auto tag_end = std::find_first_of(next, end, tag_ends.begin(), tag_ends.end());
-                if (tag_end == end)
-                    // We don't have the end of the tag, copy up to the start of it and break
-                    throw Done{tag_start};
-                // We found a tag
-                pair tag{tag_start, tag_end};
-                handleTag(tag, nextNoChangeStart);
-                pos = tag_end;
-                ++pos;
-            }
-        } catch (Done e) {
-            // We can push out the nuchanged data now
-            assert(noChange);
-            noChange(nextNoChangeStart, e.pos);
-            return e.pos;
+    /** Given the start of an HTML <tag> it find the end of it.
+     * @return The end of the tag, or the end of the input if there was no tag end */
+    auto findTagEnd = [&](iterator start) {
+        while (start != end) {
+            if (*start == '<')
+                break;
+            if (*start == '>')
+                break;
+            ++start;
         }
-        return end;
-    }
-
-    /** Once we've found a tag, handles checking, then possibly emiting events to change the attribute.
-     *
-     * If we change one of the attributes, emit the 'noChange' event for the data before the attribute value,
-     * then the 'newData' event for the new attribute value, then set the @a nextNoChangeStart iterator to the '"' after
-     * the attribute value.
-     *
-     * @param tag The tag that we found
-     * @param nextNoChangeStart the start of the next block of unchanged data
-     *
-     * */
-    void handleTag(const pair& tag, iterator& nextNoChangeStart) {
-        // Get the tag name
-        pair tag_name = getTagName(tag);
-        if (!tag_name) 
-            return;
-        // See if we care about it
-        const std::string& attrib_name = config.getAttrib(tag_name);
-        if (attrib_name.empty())
-            return;
-        // If we care, get the attribute value
-        pair attrib = findAttribute(tag, attrib_name);
-        if (attrib.first == tag.second)
-            return;
-        // If we found the attribute we wanted, see if we can get a new value from the config
-        handleAttributeValue(attrib, nextNoChangeStart);
-    }
+        return start;
+    };
 
     /// Takes the start and end of a tag and retuns the tag name.
-    pair getTagName(const pair& tag) {
+    auto getTagName = [](const pair& tag) {
+        const std::string ws=" \t\r\n";
         iterator name_start = tag.first;
         iterator name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
-        return {name_start, name_end};
-    }
+        return pair{name_start, name_end};
+    };
 
     /** Returns the start and end of the attribute value that you want
      * @param tag The range that of the tag, within which we'll search
      * @param attrib_name The attribute name that we're searching for. Must be all lower case.
      * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
-    pair findAttribute(const pair& tag, const std::string& attrib_name) {
+    auto findAttribute = [](const pair& tag, const std::string& attrib_name) {
         struct NotFound{}; /// Exception for if we can't find the attribute
+
+        auto isWS = [](char c) {
+            switch (c) {
+                case ' ':
+                case '\t':
+                case '\n':
+                case '\r':
+                    return true;
+                default:
+                    return false;
+            }
+        };
+
         iterator tag_end = tag.second;
         auto find = [=](iterator start, char c) {
             iterator res = std::find(start, tag_end, c);
@@ -167,36 +100,52 @@ struct Rewriter {
                     return std::tolower(a) == std::tolower(b);
                 };
                 if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), lower_compare))
-                    return {++quote1, quote2};
+                    return pair{++quote1, quote2};
             } catch (NotFound) {
                 // We couldn't find any more attributes in this tag
                 break;
             }
         }
-        return {tag_end, tag_end};
-    }
+        return pair{tag_end, tag_end};
+    };
 
-    static bool isWS(char c) {
-        switch (c) {
-            case ' ':
-            case '\t':
-            case '\n':
-            case '\r':
-                return true;
-            default:
+    /** Returns true if 'path' is relative.
+     *
+     * ie. if it doesn't start with '/', 'http://', or 'https://'
+     *
+     * @param path We'll check if this is relative, or ablosute
+     * @return true of 'path' is relative or empty
+     **/
+    auto is_relative = [](const pair& path) {
+        if (!path)
+            return false; // Empty path
+        if (path[0] == '/')
+            return false; // Absolute path
+        // Check http and friends
+        std::string http{"http"};
+        auto match = utils::mismatch(http.cbegin(), http.cend(), path.first, path.second);
+        if (match.first == http.end()) {
+            // Check http:// and https://
+            auto checkStart = match.first+1;
+            if (*checkStart == 's')
+                ++checkStart;
+            std::string protocol{"://"};
+            auto match = utils::mismatch(protocol.cbegin(), protocol.cend(), checkStart, http.cend());
+            if (match.first == protocol.end())
                 return false;
         }
-    }
+        return true;
+    };
 
     /** Takes the start and end of the attribute value that we care about and emits events, possibly changing the value.
      *
-     * If we don't have anything to change, just outputs nothing and leaves @a nextNoChangeStart unchanged
+     * If we don't have anything to change, just outputs nothing and leaves nextNoChangeStart unchanged
      *
      * @param attrib_range The range in the input, of the attribute value we care about
-     * @param nextNoChangeStart The start of the next 'noChange' event's range. We may change it.
+     * @returns true if all iterators after attrib start need recalculating
      *
      */
-    void handleAttributeValue(const pair& attrib_range, iterator& nextNoChangeStart) {
+    auto handleAttributeValue = [&](const pair& attrib_range) {
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
         auto value_putter = std::back_inserter(attrib_value);
@@ -232,53 +181,83 @@ struct Rewriter {
                     nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
                     // Send on the new data
                     newData(cdn_url);
-                    // TODO: Just make the algo need a random access iterator ? Have a template func that can just + base_path.length() ?
+                    // Move the nextNoChangeStart on to the end of the value
                     for(size_t i=0; i < base_path.length(); ++i)
                         ++nextNoChangeStart;
+                    return true;
                 }        
             }
-        } catch (Config::NotFound) {
-            return; // We can't replace that path, just carry on..
-        }
-    }
+        } catch (Config::NotFound) {}
+        return false; // We can't replace that path, just carry on..
+    };
 
-    /** Returns true if 'path' is relative.
+    /** Once we've found a tag, handles checking, then possibly emiting events to change the attribute.
      *
-     * ie. if it doesn't start with '/', 'http://', or 'https://'
+     * If we change one of the attributes, emit the 'noChange' event for the data before the attribute value,
+     * then the 'newData' event for the new attribute value, then set the @a nextNoChangeStart iterator to the '"' after
+     * the attribute value.
      *
-     * @param path We'll check if this is relative, or ablosute
-     * @return true of 'path' is relative or empty
-     **/
-    bool is_relative(const pair& path) {
-        if (!path)
-            return false; // Empty path
-        if (path[0] == '/')
-            return false; // Absolute path
-        // Check http and friends
-        std::string http{"http"};
-        auto match = utils::mismatch(http.cbegin(), http.cend(), path.first, path.second);
-        if (match.first == http.end()) {
-            // Check http:// and https://
-            auto checkStart = match.first+1;
-            if (*checkStart == 's')
-                ++checkStart;
-            std::string protocol{"://"};
-            auto match = utils::mismatch(protocol.cbegin(), protocol.cend(), checkStart, http.cend());
-            if (match.first == protocol.end())
-                return false;
+     * @param tag The tag that we found
+     * @param nextNoChangeStart the start of the next block of unchanged data
+     * @returns the new position for the algorithm to carry on searching from. Generally the end of the tag.
+     *          We need to return it because if we split an iterator, all others around and after it may be invalidated.
+     *
+     * */
+    auto handleTag = [&](const pair& tag) {
+        iterator tag_end = tag.second;
+        // Get the tag name
+        pair tag_name = getTagName(tag);
+        if (!tag_name) 
+            return tag_end;
+        // See if we care about it
+        const std::string& attrib_name = config.getAttrib(tag_name);
+        if (attrib_name.empty())
+            return tag_end;
+        // If we care, get the attribute value
+        pair attrib = findAttribute(tag, attrib_name);
+        if (attrib.first == tag.second)
+            return tag_end;
+        // If we found the attribute we wanted, see if we can get a new value from the config
+        bool needRecalc = handleAttributeValue(attrib);
+        if (needRecalc)
+            // The old tag_end may have been invalidated by the noChange event (eg. by apache splitting the attrib iterator, invalidating everything after it)
+            // So we'll search for the tag_end again
+            tag_end = findTagEnd(nextNoChangeStart);
+        return tag_end;
+    };
+
+    // The meat of the algorithm
+    iterator pos = start;
+    try {
+        while (pos != end) {
+            // Find the next tag
+            auto tag_start = std::find(pos, end, '<');
+            if (tag_start == end)
+                // There are no more tags, send all the data
+                throw Done{end};
+            auto next = tag_start;
+            if (++next == end)
+                // The tag is just before the end of the data, send everything before it
+                throw Done{tag_start};
+            if (*next == '/') {
+                // This is a closing tag, continue the search
+                pos = next;
+                continue;
+            }
+            auto tag_end = findTagEnd(next);
+            if (tag_end == end)
+                // We don't have the end of the tag, copy up to the start of it and break
+                throw Done{tag_start};
+            // We found a tag
+            pair tag{tag_start, tag_end};
+            pos = handleTag(tag);
         }
-        return true;
+    } catch (Done e) {
+        // We can push out the nuchanged data now
+        assert(noChange);
+        return noChange(nextNoChangeStart, e.pos);
     }
-};
-
-
-template <typename iterator, typename char_type>
-iterator rewriteHTML(const std::string& location, const Config& config,
-                     iterator start, iterator end,
-                     RangeEvent<iterator> noChange, DataEvent newData) 
-{
-    Rewriter<iterator, char_type> r{location, config, start, end, noChange, newData};
-    return r.run();
+    return end;
 }
 
 }

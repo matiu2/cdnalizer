@@ -49,11 +49,10 @@ struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, c
         return result;
     }
     bool operator ==(const type& other) const {
-        bool same_block = block == other.block;
         if (block.isSentinel() && other.block.isSentinel())
             return true;
         else
-            return same_block && (position == other.position);
+            return (block == other.block) && (position == other.position);
     }
     bool operator !=(const type& other) const { return !(*this == other); }
     bool isAtStartOfBlock() const { return position == block.begin(); }
