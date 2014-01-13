@@ -66,18 +66,15 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     /// Move buckets to a new brigade
     auto moveBuckets = [&](Iterator a, Iterator b, apr_bucket_brigade* dest) {
         // Split the last one 1st, as a split may invalidate all iterators after it
-        apr_bucket* last_bucket = b.split();
-        apr_bucket* bucket = a.split();
+        b.split();
+        a.split();
+        apr_bucket* bucket = a.bucket();
+        apr_bucket* last_bucket = b.bucket();
         // Return the char after what b was pointing at
         Iterator result{b};
         assert(b.bucket() == result.bucket()); // Should have same bucket here
-        apr_bucket* sentinel;
-        if (last_bucket == APR_BRIGADE_SENTINEL(bb))
-            sentinel = last_bucket;
-        else
-            sentinel = APR_BUCKET_NEXT(last_bucket);
         // Move all those buckets into the other brigade
-        while (bucket != sentinel) {
+        while (bucket != last_bucket) {
             apr_bucket* next = APR_BUCKET_NEXT(bucket);
             APR_BUCKET_REMOVE(bucket);
             APR_BRIGADE_INSERT_TAIL(dest, bucket);
@@ -101,7 +98,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // Called when new data to push out the filter arrives
     auto newData = [&](const std::string& data) {
         // Create a new bucket to append to completed work
-        // Copy the data to it. Needs to be copied because it's coming from a long lived data dict; not generated.
+        // Copy the data to it. Needs to be copied because it's coming from a data dict, that will dissapear when the filter does.
         apr_bucket* bucket = apr_bucket_heap_create(data.c_str(), data.size(), NULL, filter->c->bucket_alloc);
         APR_BRIGADE_INSERT_TAIL(completed_work.brigade(), bucket);
     };

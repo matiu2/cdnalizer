@@ -75,17 +75,15 @@ public:
     }
     /** Splits the bucket at @pos.
      *  If it fails, it leaves us unchanged.
-     *  If it succeeds it leaves us with a bucket where the char before pos is the last character; the next bucket's 1st char is now *pos.
-     *  @return Our bucket
+     *  If it succeeds it leaves us at the beginning of the next bucket after the split
      */
-    apr_bucket* split(const char* pos) const {
+    void split(const char* pos) const {
         if (isSentinel())
-            return _bucket; // Can't split the one-after-last bucket
+            return; // Can't split the one-after-last bucket
         if ((pos != data) && (pos != data + length)) {
             apr_bucket_split(_bucket, pos-data);
             checkStatusCode(apr_bucket_read(_bucket, const_cast<const char**>(&data), const_cast<apr_size_t*>(&length), APR_BLOCK_READ));
         }
-        return _bucket;
     }
     // Point to the next bucket
     BucketWrapper& operator ++() {
@@ -105,15 +103,13 @@ struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char> 
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
     /// Splits the block at the current position.
-    /// If succesful, we move to the next block (data we point at stays the same)
-    /// @return the bucket we had before
-    apr_bucket* split() {
-        apr_bucket* result = block.split(position);
+    /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)
+    void split() {
+        block.split(position);
         if (position == block.end()) {
             ++block;
             position = block.begin();
         }
-        return result;
     }
     apr_bucket* bucket() const { return block.bucket(); }
     Iterator& operator++() { return static_cast<Iterator&>(Base::operator++()); }

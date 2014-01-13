@@ -149,11 +149,13 @@ iterator rewriteHTML(const std::string& location, const Config& config,
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
         auto value_putter = std::back_inserter(attrib_value);
+        long loc_len{0}; // The amount of chars we add, to make attrib_value look up in the DB
         if (is_relative(attrib_range)) {
             // Prepend the attrib value with our current location if it's a relative path
             std::copy(location.begin(), location.end(), value_putter);
             if (location.back() != '/')
                 *value_putter++ = '/';
+            loc_len = location.length();
         }
         std::copy(attrib_range.first, attrib_range.second, value_putter);
 
@@ -182,7 +184,7 @@ iterator rewriteHTML(const std::string& location, const Config& config,
                     // Send on the new data
                     newData(cdn_url);
                     // Move the nextNoChangeStart on to the end of the value
-                    for(size_t i=0; i < base_path.length(); ++i)
+                    for(size_t i=0; i < base_path.length()-loc_len; ++i)
                         ++nextNoChangeStart;
                     return true;
                 }        
