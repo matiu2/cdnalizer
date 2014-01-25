@@ -79,14 +79,11 @@ public:
     /** Initialize the configuration.
      *
      * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
-     */
-    Config(Container&& path_url) : path_url(path_url) {}
-    /** Initialize the configuration.
-     *
-     * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
      * @param tag_attrib A map of tag names to the attribute we should check. Must all be lower case. eg. {{"a", "href"}}
      */
-    Config(Container&& path_url, Container&& tag_attrib) : path_url(path_url), tag_attrib(tag_attrib) {}
+    Config(Container&& path_url={}, Container&& tag_attrib={}) : path_url(path_url), tag_attrib(tag_attrib) {}
+    /** Copy constructor */
+    Config(const Config&) = default;
     /// @return the attribute that we care about for a tag name, or an empty string if not found
     template <typename iterator>
     const std::string& getAttrib(const pair<iterator>& tag) const { return lookup(tag_attrib, tag); }
@@ -96,6 +93,16 @@ public:
     /// Add a path-url pair, for later lookup
     void addPath(std::string path, std::string url) {
         path_url.insert(std::make_pair(path, url));
+    }
+    /// Include the values from another config object
+    Config& operator +=(const Config& other) {
+        for (auto pair : other.path_url) {
+            auto inserted = path_url.insert(pair);
+            // If it was already there, update the value
+            if (!inserted.second)
+                inserted.first->second = pair.second;
+        }
+        return *this;
     }
 };
 

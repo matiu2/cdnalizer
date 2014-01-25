@@ -37,14 +37,14 @@
 **    The sample page from mod_cdnalizer.c
 */ 
 
+#include "mod_cdnalizer.hpp"
 #include "../Rewriter_impl.hpp"
 #include "filter.hpp"
+#include "config.hpp"
 
 extern "C" {
-#include "httpd.h"
-#include "http_config.h"
-#include "http_protocol.h"
-#include "ap_config.h"
+#include <apache2/httpd.h>
+#include <apache2/http_protocol.h>
 
 static const char cdnalizer_filter_name[] = "CDNALIZER";
 
@@ -70,18 +70,21 @@ static void cdnalizer_register_hooks(apr_pool_t *)
                               AP_FTYPE_CONTENT_SET);
 }
 
+
 /* Dispatch list for API hooks */
 module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     STANDARD20_MODULE_STUFF, 
-    NULL,                  /* create per-dir    config structures */
-    NULL,                  /* merge  per-dir    config structures */
+    //cdnalizer_create_dir_config,     /* create per-dir    config structures */
+    //cdnalizer_merge_dir_configs,     /* merge  per-dir    config structures */
+    NULL,
+    NULL,
     NULL,                  /* create per-server config structures */
     NULL,                  /* merge  per-server config structures */
-    //cdnalizer_filter_cmds, /* table of config file commands       */
-    NULL,
+    cdnalizer_config_directives, /* table of config file directives       */
     cdnalizer_register_hooks  /* register hooks                      */
 };
 
+AP_DECLARE_MODULE(cdnalizer_module);
 
 }
 
