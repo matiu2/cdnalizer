@@ -22,8 +22,15 @@ const char *addCDNPath(cmd_parms *cmd, void *cfg, const char *arg1, const char* 
 // List of Directives
 static const command_rec cdnalizer_config_directives[] = {
     AP_INIT_ITERATE2(
-        "CDN_URL", &addCDNPath, NULL, OR_OPTIONS,
-        "A map of 'path found' to 'cdn url', eg /images http://cdn.supa.ws/imgs")
+        "CDN_URL", addCDNPath, NULL, OR_OPTIONS,
+        "A map of 'path found' to 'cdn url', eg /images http://cdn.supa.ws/imgs"),
+    // TODO: DEL_CDN_URL
+    /*
+    AP_INIT_ITERATE(
+        "DEL_CDN_URL", delCDNPath, NULL, OR_OPTIONS,
+        "Remove a CDN_URL pair (by the url/key)"),
+    */
+    { } // Leave this here, or you get segfaults matey
 };
 
 

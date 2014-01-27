@@ -31,7 +31,7 @@ std::ostream& operator <<(std::ostream& s, const Pair& p) {
 
 go_bandit([&](){
 
-    Config::Container map {{
+    Container map {{
         {"/images", "http://cdn.supa.ws/imgs"},
         {"/images2", "http://cdn.supa.ws/imgs2"},
         {"/aaa", "http://cdn.supa.ws/aaa"},
@@ -41,7 +41,7 @@ go_bandit([&](){
 
     describe("Config", [&](){
         it("1. finds path - cdn_url pairs", [&] {
-            Config cfg{Config::Container{map}};
+            Config cfg{Container{map}};
             // Find aaa
             Config::CDNPair aaa = cfg.findCDNUrl("/aaa/x.gif");
             Pair expected{"/aaa", "http://cdn.supa.ws/aaa"};
@@ -56,7 +56,7 @@ go_bandit([&](){
             AssertThat(aac, Equals(expected));
         });
         it("2. add path works", [&] {
-            Config cfg{Config::Container{map}};
+            Config cfg{Container{map}};
             // Shouldn't be there at the beginning
             Config::CDNPair aad = cfg.findCDNUrl("/aad/x.gif");
             Pair expected{"/aad", "http://cdn.supa.ws/aad"};

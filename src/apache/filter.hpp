@@ -4,6 +4,7 @@
 #include "../Config.hpp"
 #include "utils.hpp"
 #include "iterator.hpp"
+#include "mod_cdnalizer.hpp"
 
 extern "C" {
 #include <apr_buckets.h>
@@ -26,16 +27,12 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     if (APR_BRIGADE_EMPTY(bb)) { return APR_SUCCESS; }
 
     // TODO: Get our current path from Apache
-    std::string location{"/"};
+    std::string location{filter->r->uri};
+    auto pos = location.rfind('/');
+    if (pos != std::string::npos)
+        location.resize(pos+1);
 
-    // TODO: Load this from Apache
-    Config config{{
-        {"/images", "http://cdn.supa.ws/imgs"},
-        {"/images2", "http://cdn.supa.ws/imgs2"},
-        {"/aaa", "http://cdn.supa.ws/aaa"},
-        {"/aab", "http://cdn.supa.ws/aab"},
-        {"/aac", "http://cdn.supa.ws/aac"}
-    }};
+    Config* config = static_cast<Config*>(ap_get_module_config(filter->r->per_dir_config, &cdnalizer_module));
 
     // Work to be sent to the next filter on flush or ending
     BrigadeGuard completed_work{filter->r->pool, filter->c->bucket_alloc};
@@ -105,7 +102,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     // Do the actual rewriting now
     Iterator tag_start = rewriteHTML<Iterator>(
-        location, config, beginning, end, onUnchangedData, newData);
+        location, *config, beginning, end, onUnchangedData, newData);
 
     // Store any left over data for next time
     if (tag_start != end) {

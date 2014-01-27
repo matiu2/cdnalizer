@@ -23,19 +23,9 @@ namespace std {
     inline bool operator <(const pair<string, string>& a, const string& b) { return a.first < b; }
 }
 
-namespace cdnalizer {
+using Container = std::map<std::string, std::string>;
 
-class Config {
-public:
-    using Container = std::map<std::string, std::string>;
-    using CDNPair = std::pair<const std::string&, const std::string&>;
-    /// Thrown when we can't find a suitable CDN url for a base path
-    struct NotFound {};
-private:
-    /// Map of paths to urls, eg. {{"/images/", "http://cdn.supa.ws/images/"}}
-    Container path_url;
-    /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
-    Container tag_attrib = {
+const Container default_tag_attrib {
         {"a", "href"},
         {"applet", "codebase"},
         {"area", "href"},
@@ -48,12 +38,26 @@ private:
         {"iframe", "src"},
         {"img", "src"},
         {"input", "src"},
+        {"link", "href"},
         {"layer", "src"},
         {"object", "usemap"},
         {"q", "url"},
         {"script", "url"},
         {"style", "src"}
-    };
+};
+
+namespace cdnalizer {
+
+class Config {
+public:
+    using CDNPair = std::pair<const std::string&, const std::string&>;
+    /// Thrown when we can't find a suitable CDN url for a base path
+    struct NotFound {};
+private:
+    /// Map of paths to urls, eg. {{"/images/", "http://cdn.supa.ws/images/"}}
+    Container path_url;
+    /// Pairs of 'tag to change' + 'attribute to change'. eg. {{"img","src"}, {"a", "href"}}
+    Container tag_attrib;
     const std::string empty={};
     /// Lookup in a string dict, using a 'pair'
     /// @returns the value, or an empty string if not found
@@ -81,7 +85,7 @@ public:
      * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
      * @param tag_attrib A map of tag names to the attribute we should check. Must all be lower case. eg. {{"a", "href"}}
      */
-    Config(Container&& path_url={}, Container&& tag_attrib={}) : path_url(path_url), tag_attrib(tag_attrib) {}
+    Config(Container&& path_url={}, Container&& tag_attrib={}) : path_url(path_url), tag_attrib(tag_attrib.empty() ? default_tag_attrib : tag_attrib ) {}
     /** Copy constructor */
     Config(const Config&) = default;
     /// @return the attribute that we care about for a tag name, or an empty string if not found

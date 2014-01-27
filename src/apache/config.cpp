@@ -11,7 +11,7 @@ extern "C" {
 using cdnalizer::Config;
 
 /// Create a config object for a dir
-void* cdnalizer_create_dir_config(apr_pool_t* pool, char*) {
+void* cdnalizer_create_dir_config(apr_pool_t* pool, char* context) {
     void* memory = apr_palloc(pool, sizeof(Config));
     Config* cfg = new (memory) Config();
     return cfg;
@@ -30,7 +30,7 @@ void* cdnalizer_merge_dir_configs(apr_pool_t* pool, void* base, void* add) {
 
 /// Reads a line from the Apache config
 const char *addCDNPath(cmd_parms *cmd, void *memory, const char *arg1, const char* arg2) {
-    //ap_log_error(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, cmd->server, "Reading CDN->url pair: %s->%s", arg1, arg2);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, cmd->server, "Reading CDN->url pair: %s->%s", arg1, arg2);
     Config* cfg = static_cast<Config*>(memory);
     cfg->addPath(arg1, arg2);
     return NULL;

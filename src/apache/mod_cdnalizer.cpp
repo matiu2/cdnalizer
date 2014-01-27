@@ -74,10 +74,8 @@ static void cdnalizer_register_hooks(apr_pool_t *)
 /* Dispatch list for API hooks */
 module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     STANDARD20_MODULE_STUFF, 
-    //cdnalizer_create_dir_config,     /* create per-dir    config structures */
-    //cdnalizer_merge_dir_configs,     /* merge  per-dir    config structures */
-    NULL,
-    NULL,
+    cdnalizer_create_dir_config,     /* create per-dir    config structures */
+    cdnalizer_merge_dir_configs,     /* merge  per-dir    config structures */
     NULL,                  /* create per-server config structures */
     NULL,                  /* merge  per-server config structures */
     cdnalizer_config_directives, /* table of config file directives       */
