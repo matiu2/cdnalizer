@@ -10,10 +10,22 @@ extern "C" {
 
 using cdnalizer::Config;
 
+/// Delete a config object from a pool that's dying
+apr_status_t deleteConfig(void* memory) {
+    Config* cfg = static_cast<Config*>(memory);
+    cfg->~Config();
+    return APR_SUCCESS;
+}
+
 /// Create a config object for a dir
 void* cdnalizer_create_dir_config(apr_pool_t* pool, char* context) {
     void* memory = apr_palloc(pool, sizeof(Config));
-    Config* cfg = new (memory) Config();
+    Config* cfg;
+    if (context)
+        cfg = new (memory) Config({}, context);
+    else
+        cfg = new (memory) Config();
+    apr_pool_cleanup_register(pool, memory, &deleteConfig, &deleteConfig);
     return cfg;
 }
 
@@ -24,6 +36,7 @@ void* cdnalizer_merge_dir_configs(apr_pool_t* pool, void* base, void* add) {
     // Make the result
     void* memory = apr_palloc(pool, sizeof(Config));
     Config* result = new (memory) Config(*cfg1);
+    apr_pool_cleanup_register(pool, memory, &deleteConfig, &deleteConfig);
     *result += *cfg2;
     return result;
 }

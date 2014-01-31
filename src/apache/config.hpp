@@ -30,7 +30,7 @@ static const command_rec cdnalizer_config_directives[] = {
         "DEL_CDN_URL", delCDNPath, NULL, OR_OPTIONS,
         "Remove a CDN_URL pair (by the url/key)"),
     */
-    { } // Leave this here, or you get segfaults matey
+    {nullptr,nullptr,nullptr,0,RAW_ARGS,nullptr} // Leave this here, or you get segfaults matey
 };
 
 
