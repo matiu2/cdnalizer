@@ -157,9 +157,9 @@ go_bandit([](){
             SequencedNewData new_block = new_blocks.at(0);
             AssertThat(new_block, Equals(SequencedNewData{2, "http://cdn.supa.ws/blog/imags"}));
 
-            // Unchanged: "><img src="
+            // Unchanged: '/a.gif"><img src='
             block = unchanged_blocks.at(1);
-            AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin()+21, data.cbegin()+33}));
+            AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin()+15, data.cbegin()+33}));
 
             // New Data: "http://cdn.supa.ws/imgs"
             new_block = new_blocks.at(1);

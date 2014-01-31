@@ -2,10 +2,7 @@
 
 using namespace cdnalizer;
 
-/// Config::CDNPair is a reference to existing strings; we want this type to actually hold the strings
-using Pair = std::pair<std::string, std::string>;
-
-bool operator ==(const Config::CDNPair& a, const Pair& b) {
+bool operator ==(const Config::CDNRefPair& a, const Config::CDNPair& b) {
     return (a.first == b.first) && (a.second == b.second);
 }
 
@@ -13,18 +10,18 @@ bool operator ==(const Config::CDNPair& a, const Pair& b) {
 
 using namespace bandit;
 
-bool operator ==(const Pair& a, const Config::CDNPair& b) {
+bool operator ==(const Config::CDNPair& a, const Config::CDNRefPair& b) {
     return (a.first == b.first) && (a.second == b.second);
 }
 
 /// Print CDNPairs
-std::ostream& operator <<(std::ostream& s, const Config::CDNPair& p) {
+std::ostream& operator <<(std::ostream& s, const Config::CDNRefPair& p) {
     s << "< " << p.first << ", " << p.second << " >";
     return s;
 }
 
 /// Print CDNPairs
-std::ostream& operator <<(std::ostream& s, const Pair& p) {
+std::ostream& operator <<(std::ostream& s, const Config::CDNPair& p) {
     s << "< " << p.first << ", " << p.second << " >";
     return s;
 }
@@ -43,27 +40,27 @@ go_bandit([&](){
         it("1. finds path - cdn_url pairs", [&] {
             Config cfg{Container{map}};
             // Find aaa
-            Config::CDNPair aaa = cfg.findCDNUrl("/aaa/x.gif");
-            Pair expected{"/aaa", "http://cdn.supa.ws/aaa"};
+            Config::CDNRefPair aaa = cfg.findCDNUrl("/aaa/x.gif");
+            Config::CDNPair expected{"/aaa", "http://cdn.supa.ws/aaa"};
             AssertThat(aaa, Equals(expected));
             // Find aab
-            Config::CDNPair aab = cfg.findCDNUrl("/aab/x.gif");
+            Config::CDNRefPair aab = cfg.findCDNUrl("/aab/x.gif");
             expected = {"/aab", "http://cdn.supa.ws/aab"};
             AssertThat(aab, Equals(expected));
             // Find aac
-            Config::CDNPair aac = cfg.findCDNUrl("/aac/x.gif");
+            Config::CDNRefPair aac = cfg.findCDNUrl("/aac/x.gif");
             expected = {"/aac", "http://cdn.supa.ws/aac"};
             AssertThat(aac, Equals(expected));
         });
         it("2. add path works", [&] {
             Config cfg{Container{map}};
             // Shouldn't be there at the beginning
-            Config::CDNPair aad = cfg.findCDNUrl("/aad/x.gif");
-            Pair expected{"/aad", "http://cdn.supa.ws/aad"};
+            Config::CDNRefPair aad = cfg.findCDNUrl("/aad/x.gif");
+            Config::CDNPair expected{"/aad", "http://cdn.supa.ws/aad"};
             AssertThat(aad, !Equals(expected));
             // Add path should work
             cfg.addPath("/aad", "http://cdn.supa.ws/aad");
-            Config::CDNPair aad2 = cfg.findCDNUrl("/aad/x.gif");
+            Config::CDNRefPair aad2 = cfg.findCDNUrl("/aad/x.gif");
             AssertThat(aad2, Equals(expected));
         });
     });

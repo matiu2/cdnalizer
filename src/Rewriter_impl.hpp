@@ -117,24 +117,7 @@ iterator rewriteHTML(const std::string& location, const Config& config,
      * @return true of 'path' is relative or empty
      **/
     auto is_relative = [](const pair& path) {
-        if (!path)
-            return false; // Empty path
-        if (path[0] == '/')
-            return false; // Absolute path
-        // Check http and friends
-        std::string http{"http"};
-        auto match = utils::mismatch(http.cbegin(), http.cend(), path.first, path.second);
-        if (match.first == http.end()) {
-            // Check http:// and https://
-            auto checkStart = match.first+1;
-            if (*checkStart == 's')
-                ++checkStart;
-            std::string protocol{"://"};
-            auto match = utils::mismatch(protocol.cbegin(), protocol.cend(), checkStart, http.cend());
-            if (match.first == protocol.end())
-                return false;
-        }
-        return true;
+        return utils::is_relative(path.first, path.second);
     };
 
     /** Takes the start and end of the attribute value that we care about and emits events, possibly changing the value.
@@ -150,14 +133,18 @@ iterator rewriteHTML(const std::string& location, const Config& config,
         std::string attrib_value;
         auto value_putter = std::back_inserter(attrib_value);
         long loc_len{0}; // The amount of chars we add, to make attrib_value look up in the DB
-        if (is_relative(attrib_range)) {
+        if (is_relative(attrib_range)) {   // eg. attrib_range='images/a.gif'
             // Prepend the attrib value with our current location if it's a relative path
-            std::copy(location.begin(), location.end(), value_putter);
-            if (location.back() != '/')
-                *value_putter++ = '/';
+            std::copy(location.begin(), location.end(), value_putter);  // eg. location='/blog'
             loc_len = location.length();
+            if (location.back() != '/') {
+                *value_putter++ = '/';
+                ++loc_len;
+            } // eg. attrib_value='/blog/'
         }
         std::copy(attrib_range.first, attrib_range.second, value_putter);
+        // eg. attrib_value='/blog/images/a.gif'
+        // eg. loc_len = 6 = len('/blog/')
 
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
