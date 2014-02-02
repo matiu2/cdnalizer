@@ -29,3 +29,13 @@ include(FindPackageHandleStandardArgs)
 # all listed variables are TRUE
 find_package_handle_standard_args(APACHE DEFAULT_MSG APACHE_INCLUDE_DIR )
 mark_as_advanced(APACHE_INCLUDE_DIR)
+
+# Binary
+find_program(APACHE_BIN NAMES apache2 httpd apache)
+if (DEFINED APACHE_BIN)
+    execute_process(
+        COMMAND ${APACHE_BIN} -v
+        OUTPUT_VARIABLE APACHE_OUTPUT
+    )
+    string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" APACHE_VERSION "${APACHE_OUTPUT}")
+endif()

@@ -43,17 +43,10 @@
 #include "config.hpp"
 
 extern "C" {
-#include <apache2/httpd.h>
-#include <apache2/http_protocol.h>
+#include <httpd.h>
+#include <http_protocol.h>
 
 static const char cdnalizer_filter_name[] = "CDNALIZER";
-
-/*
-static const command_rec cdnalizer_filter_cmds[] = {
-    AP_INIT_RAW_ARGS("CDNRewriteRule", cmd_cdnrewriterule, NULL, OR_FILEINFO,
-                     "an URL-applied regexp-pattern and a substitution (cdn) URL");
-}
-*/
 
 static apr_status_t cdnalize_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb)
 {
@@ -82,7 +75,11 @@ module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     cdnalizer_register_hooks  /* register hooks                      */
 };
 
+#ifdef APACHE_2_4
 AP_DECLARE_MODULE(cdnalizer_module);
+#else
+#endif
+
 
 }
 

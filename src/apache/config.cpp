@@ -2,7 +2,9 @@
 #include "../Config.hpp"
 #include "mod_cdnalizer.hpp"
 
+#ifdef HAVE_APACHE_2_4
 APLOG_USE_MODULE(cdnalizer_module);
+#endif
 
 // Our C style parts for Apache registration
 extern "C" {
