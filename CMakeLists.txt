@@ -4,14 +4,20 @@ project (cdnalizer)
 
 enable_testing()
 
+include(cmake/get_bandit.cmake)
+
 set(CMAKE_MODULE_PATH $CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dependencies/bandit)
 
 add_definitions(-std=c++11 -Wall -Wextra)
 
-set(USE_SYSTEM_APACHE Off
+# Settings
+set(STATIC_STDLIB_CXX Off
+    CACHE BOOL "Statically link stdlibc++ (for the actual mod_cdnalizer only) (works with g++ only)")
+set(USE_SYSTEM_APACHE On
     CACHE BOOL "Find apache on your system, or use the embeded 2.2 headers")
+
 if (USE_SYSTEM_APACHE)
     # APR - Apache Portable Runtime
     find_package(apr REQUIRED)
@@ -39,3 +45,5 @@ file(COPY dev-tools DESTINATION .)
 configure_file(dev-tools/apache/apache2.conf dev-tools/apache/apache2.conf)
 
 add_subdirectory(src)
+
+include(cmake/package.cmake)
