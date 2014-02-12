@@ -1,60 +1,55 @@
 # CDNalizer
 
-## Overview
+cee-dee-en-a-lies-ur
 
-Lets you read in html like <img href="/images/b.gif" /> and output <img href="http://cdn.supa.ws/images/b.gif" /> reall quickly.
+## What's it good for ?
 
-Provides a standalone program and an Apache output filter to do it on the fly.
+It lets you move static content (images/css/js) to a CDN, without having to modify your app; just one line of Apache config.
 
-## TODO
+For example if you moved everything in your /images folder to http://my.cdn.wiz/images .. you'd then enter this line in Apache:
 
-### Standalone program
+CDN_URL /images/ http://my.cdn.wiz/images/
 
- * Have it read a config file
+### "But what about mod_rewrite!?"
 
-### Apache filter
+This is not the same.
 
- * Have it detect CDN_URL config recursion loops
-     * Have it generate error logs for the recursion
- * Have it support DEL_CDN_URL config directive
+With mod_rewrite, your HTML goes out like this:
 
-### NGINX filter
+<img src="/images/x.gif" />
 
- * Start writing it
- * Fill in rest of todo list
+Then your client's browser hits your server again, asking for x.gif; mod_rewrite then tells your browser, "no dude, it's not here! It's at http://my.cdn.wiz/images/x.gif
 
-# Archetecture
+On the plus side, the browser will remember the 'permanent' redirect for several minutes and won't ask again for that image for ages.
 
-## Components
+----
 
- * /src -- contains all source code
-     * Config.hpp -- Holds a configuration object
-     * Rewriter.hpp and Rewriter_impl.hpp -- The actual HTML re-writing algorithnm
-     * pair.hpp -- internal class to help read in buffers with less copying; pair of iterators into a buffer
-     * utils.hpp -- internal utility funcs and classes
+With mod_cdnalizer your HTML goes out like this:
 
- * /src/stream/ -- Just used for testing and standalone, acts on a stream given a forward iterator and an output iterator 
- * /src/standalone/ -- Command line read and write files
- * /src/apache/ -- Everything apache
-   * config.hpp -- Handles apache configuration callbacks
-   * config.cpp --
-   * mod_cdnalizer.hpp -- The main module and callback hook organizer
-   * mod_cdnalizer.cpp -- 
-   * AbstractBlockIterator.hpp -- A forward iterator, that les you use blocks of buffers as if they were one big buffer
-   * iterator.hpp -- Lets you treat pointers to blocks of chars as a pchar (almost)(up to the level of a ForwardIterator to char)
-   * filter.hpp -- The Apache output filter coordinator
-   * utils.hpp -- bits and pieces to make integration with Apache easier
+<img src="http://my.cdn.wiz/images/x.gif" />
 
-# Useful developer links
+Your browser goes straight to the CDN, and cuts out that intermediary request.
 
- * http://wiki.apache.org/nutch/WritingPluginExample
- * http://httpd.apache.org/docs/2.2/filter.html
- * http://httpd.apache.org/docs/2.2/filter.html
- * http://httpd.apache.org/docs/2.2/mod/mod_filter.html
- * http://httpd.apache.org/docs/trunk/developer/output-filters.html
+So as you can you can imagine, when you multiply number of static files (image/css/js) by number of users (then minus the repeat hits) .. mod_cdnalizer can save your server a lot of useless hits.
 
-# Future
+----
 
- * Threading
- * Caching by url + quick checksum
- * Have it handle uploads and spool them straight up to cloud files
+### "Why don't I just change my app to rewrite the HTML?"
+
+Go on then, do that. If you can change your app easily and have good processes in place to do so, then mod_cdnalizer is not for you.
+
+One day there was Mister X. He painstakingly changed his app to rewrite all the outgoing urls to point to the CDN. Everything was going well, when suddenly, Mister X accidentally deleted the CDN folder.
+
+"Oh no! my sites are all showing crap with no JS, no CSS, and 'x's where there should be images! Quick quick change the app to point back to the local files!"
+
+Too late for Mister X; it took 3 days to change his app back. If only he would have used mod_cdnalizer, he would have been able to comment out 3 Apache directives in a minute and had all his sites look nice again in 5 minutes.
+
+----
+
+### "What about speed? Won't it slow down all the outgoing HTML?"
+
+I thought that too. I thought, I'll take an MD5 of pages and cache the results, but you know what happened ? it turned out that rewriting the page on the way out is faster than taking an MD5.
+
+As your app is probably written in speedy PHP/Ruby/Python .. and mod_rewrite is painstakingly written is in c++ with speed in mind (eg. trying to reduce memory copying as much as possible) .. I'm sure there are many other areas that you could change to improve your speed before hitting up mod_cdnalizer.
+
+----
