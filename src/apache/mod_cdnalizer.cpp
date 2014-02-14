@@ -75,7 +75,7 @@ module AP_MODULE_DECLARE_DATA cdnalizer_module = {
     cdnalizer_register_hooks  /* register hooks                      */
 };
 
-#ifdef APACHE_2_4
+#ifdef HAVE_APACHE_2_4
 AP_DECLARE_MODULE(cdnalizer_module);
 #else
 #endif

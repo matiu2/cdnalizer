@@ -4,7 +4,7 @@ include(ExternalProject)
 ExternalProject_Add(
     bandit
     PREFIX dependencies
-    GIT_REPOSITORY https://github.com/joakimkarlsson/bandit.git
-    #GIT_REPOSITORY /home/matiu/projects/bandit
+    #GIT_REPOSITORY https://github.com/joakimkarlsson/bandit.git
+    GIT_REPOSITORY /home/matiu/projects/bandit
     INSTALL_COMMAND echo # No install
 )
