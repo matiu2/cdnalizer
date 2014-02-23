@@ -38,7 +38,6 @@
 */ 
 
 #include "mod_cdnalizer.hpp"
-#include "../Rewriter_impl.hpp"
 #include "filter.hpp"
 #include "config.hpp"
 
@@ -80,17 +79,4 @@ AP_DECLARE_MODULE(cdnalizer_module);
 #else
 #endif
 
-
-}
-
-namespace cdnalizer {
-namespace apache {
-
-struct Iterator;
-
-Iterator rewriteHTML(const std::string& location, const Config& config,
-                     Iterator start, Iterator end,
-                     RangeEvent<Iterator> noChange, DataEvent newData);
-
-}
 }

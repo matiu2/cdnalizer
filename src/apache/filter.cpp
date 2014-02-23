@@ -2,6 +2,7 @@
 
 #include "../Rewriter.hpp"
 #include "../Config.hpp"
+#include "../Rewriter_impl.hpp"
 #include "iterator.hpp"
 #include "mod_cdnalizer.hpp"
 
@@ -50,9 +51,6 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         APR_BRIGADE_INSERT_HEAD(bb, leftover_bucket);
         assert(APR_BRIGADE_EMPTY(leftover_work)); // There should only ever be zero or one buckets left over
     }
-    using cdnalizer::apache::Iterator;
-    using cdnalizer::apache::EndIterator;
-    using cdnalizer::apache::BrigadeGuard;
 
     Iterator beginning{bb, flush};
     Iterator end{EndIterator(bb)};
@@ -84,7 +82,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     }
 
     // Called when we find a range of unchanged data
-    auto onUnchangedData = [&](const Iterator& start, const Iterator& end) {
+    std::function<Iterator(const Iterator&, const Iterator&)> onUnchangedData = [&](const Iterator& start, const Iterator& end) {
         // Move buckets from start up to the current into our completed_work brigade
         return moveBuckets(start, end, completed_work);
     };
@@ -102,8 +100,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, filter->r, "Filtering Location: %s", log_location);
 
     // Do the actual rewriting now
-    Iterator tag_start = rewriteHTML<Iterator>(
-        location, *config, beginning, end, onUnchangedData, newData);
+    Iterator tag_start = rewriteHTML(location, *config, beginning, end, onUnchangedData, newData);
 
     // Store any left over data for next time
     if (tag_start != end) {
