@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <cassert>
 
-#include "utils.hpp"
 #include "AbstractBlockIterator.hpp"
+#include "utils.hpp"
 
 extern "C" {
 #include <apr_buckets.h>

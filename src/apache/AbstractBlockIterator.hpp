@@ -3,7 +3,6 @@
 
 #include <iterator>
 
-#include "utils.hpp"
 
 namespace cdnalizer {
 namespace apache {

@@ -15,8 +15,8 @@ if (STATIC_STDLIB_CXX)
     add_definitions(-static-libstdc++ -static-libgcc)
 endif()
 
-add_library(mod_cdnalizer SHARED mod_cdnalizer.cpp config.cpp $<TARGET_OBJECTS:base>)
-target_link_libraries(mod_cdnalizer ${APR_LIBRARIES})
+add_library(mod_cdnalizer SHARED mod_cdnalizer.cpp config.cpp filter.cpp)
+target_link_libraries(mod_cdnalizer base ${APR_LIBRARIES})
 set_target_properties(mod_cdnalizer PROPERTIES PREFIX "")
 
 INSTALL(

@@ -86,9 +86,11 @@ AP_DECLARE_MODULE(cdnalizer_module);
 namespace cdnalizer {
 namespace apache {
 
+struct Iterator;
+
 Iterator rewriteHTML(const std::string& location, const Config& config,
-                 Iterator start, Iterator end,
-                 RangeEvent<Iterator> noChange, DataEvent newData);
+                     Iterator start, Iterator end,
+                     RangeEvent<Iterator> noChange, DataEvent newData);
 
 }
 }

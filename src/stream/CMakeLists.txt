@@ -1,7 +1,9 @@
 project (stream)
 
-add_library(stream OBJECT stream.cpp)
+add_library(stream STATIC stream.cpp)
+target_link_libraries(stream base)
 
-add_executable(test_iterator test_iterator.cpp $<TARGET_OBJECTS:base> $<TARGET_OBJECTS:stream>)
+add_executable(test_iterator test_iterator.cpp)
+target_link_libraries(test_iterator stream)
 add_test(test_iterator, test_iterator)
 set_target_properties(test_iterator PROPERTIES DEPENDS bandit)
