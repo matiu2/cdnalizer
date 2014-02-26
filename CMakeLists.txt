@@ -4,15 +4,14 @@ project (cdnalizer)
 
 enable_testing()
 
-include(cmake/get_bandit.cmake)
-
 set(CMAKE_MODULE_PATH $CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dependencies/bandit)
+include(cmake/get_bandit.cmake)
 
 add_definitions(-std=c++11 -Wall -Wextra)
 
 SET(VERSION 0.1)
+
+# Default to release build, as that's what most people use it for
 
 # Installation settings
 set(BUILD_DISTRO DEB
