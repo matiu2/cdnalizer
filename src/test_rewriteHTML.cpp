@@ -17,30 +17,34 @@ using SequencedNewData = std::pair<int, std::string>;
 
 // Nice ways to print some of the types we're working with
 
-std::ostream& operator<<(std::ostream& stream, const SequencedIteratorPair& p) {
-    std::string s;
-    std::copy(p.start, p.end, std::back_inserter(s));
+namespace std {
+
+ostream& operator<<(ostream& stream, const SequencedIteratorPair& p) {
+    string s;
+    copy(p.start, p.end, back_inserter(s));
     stream << "SI - i(" << p.sequence << ") sz(" << p.end-p.start << ") data: --" << s << "--";
     return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, const SequencedNewData& n) {
+ostream& operator<<(ostream& stream, const SequencedNewData& n) {
     stream << "Sequenced New Data - sequence(" << n.first << ") length(" << n.second.length() << ") data: --" << n.second << "--";
     return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, const std::vector<SequencedIteratorPair>& v) {
+ostream& operator<<(ostream& stream, const vector<SequencedIteratorPair>& v) {
     stream << "Vector of Iterator Pairs: Length(" << v.size() << ")";
     for(const SequencedIteratorPair& p : v)
-        stream << p << std::endl;
+        stream << p << endl;
     return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, const std::vector<SequencedNewData>& v) {
+ostream& operator<<(ostream& stream, const vector<SequencedNewData>& v) {
     stream << "Vector of new datas: Length(" << v.size() << ")";
     for(const SequencedNewData& p : v)
-        stream << p << std::endl;
+        stream << p << endl;
     return stream;
+}
+
 }
 
 // Custom Operators

@@ -1,32 +1,35 @@
 #include "Config.hpp"
+#include <bandit/bandit.h>
 
-using namespace cdnalizer;
+using cdnalizer::Config;
 
 bool operator ==(const Config::CDNRefPair& a, const Config::CDNPair& b) {
     return (a.first == b.first) && (a.second == b.second);
 }
 
-#include <bandit/bandit.h>
-
-using namespace bandit;
-
 bool operator ==(const Config::CDNPair& a, const Config::CDNRefPair& b) {
     return (a.first == b.first) && (a.second == b.second);
 }
 
-/// Print CDNPairs
-std::ostream& operator <<(std::ostream& s, const Config::CDNRefPair& p) {
+namespace std {
+
+/// So that the test can print the output
+ostream& operator <<(ostream& s, const Config::CDNRefPair& p) {
     s << "< " << p.first << ", " << p.second << " >";
     return s;
 }
 
-/// Print CDNPairs
-std::ostream& operator <<(std::ostream& s, const Config::CDNPair& p) {
+ostream& operator <<(ostream& s, const Config::CDNPair& p) {
     s << "< " << p.first << ", " << p.second << " >";
     return s;
+}
+
 }
 
 go_bandit([&](){
+
+    using namespace bandit;
+    using namespace cdnalizer;
 
     Container map {{
         {"/images", "http://cdn.supa.ws/imgs"},
@@ -62,6 +65,13 @@ go_bandit([&](){
             cfg.addPath("/aad", "http://cdn.supa.ws/aad");
             Config::CDNRefPair aad2 = cfg.findCDNUrl("/aad/x.gif");
             AssertThat(aad2, Equals(expected));
+        });
+        it(("3. two relative paths will both be absolutized"), [&] {
+            Config cfg{Container{map}};
+            cfg.addPath("x", "y");
+            Config::CDNRefPair result = cfg.findCDNUrl("x/x.gif");
+            Config::CDNPair expected{"/x", "/y/x.gif"};
+            AssertThat(result, Equals(expected));
         });
     });
 });
