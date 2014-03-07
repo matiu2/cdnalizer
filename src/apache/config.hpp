@@ -21,15 +21,9 @@ const char *addCDNPath(cmd_parms *cmd, void *cfg, const char *arg1, const char* 
 
 // List of Directives
 static const command_rec cdnalizer_config_directives[] = {
-    #ifdef HAVE_APACHE_2_4
     AP_INIT_ITERATE2(
         "CDN_URL", addCDNPath, NULL, OR_OPTIONS,
         "A map of 'path found' to 'cdn url', eg /images http://cdn.supa.ws/imgs"),
-    #else
-    AP_INIT_ITERATE2(
-        "CDN_URL", addCDNPath, NULL, OR_OPTIONS,
-        "A map of 'path found' to 'cdn url', eg /images http://cdn.supa.ws/imgs"),
-    #endif
     // TODO: DEL_CDN_URL
     /*
     AP_INIT_ITERATE(

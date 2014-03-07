@@ -36,9 +36,7 @@ if (USE_SYSTEM_APACHE)
     # Apache - include files
     find_package(Apache REQUIRED)
     if(${APACHE_VERSION} MATCHES 2.4*)
-        set(HAVE_APACHE_2_4 True)
-    else()
-        set(HAVE_APACHE_2_4 True)
+        set(HAVE_APACHE_2_4)
     endif()
 else()
     set(APR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/apr-1.3.9)
@@ -50,7 +48,6 @@ else()
       APR_INCLUDE_DIR
       APACHE_INCLUDE_DIR
      )
-    set(HAVE_APACHE_2_4 False)
 endif()
 
 file(COPY dev-tools DESTINATION .)
