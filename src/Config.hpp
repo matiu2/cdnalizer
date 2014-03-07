@@ -93,7 +93,7 @@ private:
     }
     /// Ensure base_location ends in '/'
     void ensureSlashOnEnd() {
-        if (base_location.empty() || (*base_location.cend() != '/'))
+        if (base_location.empty() || (base_location.back() != '/'))
             base_location.append("/");
     }
 public:

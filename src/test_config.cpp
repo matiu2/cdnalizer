@@ -70,7 +70,7 @@ go_bandit([&](){
             Config cfg{Container{map}};
             cfg.addPath("x", "y");
             Config::CDNRefPair result = cfg.findCDNUrl("x/x.gif");
-            Config::CDNPair expected{"/x", "/y/x.gif"};
+            Config::CDNPair expected{"/x", "/y"};
             AssertThat(result, Equals(expected));
         });
     });
