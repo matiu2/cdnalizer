@@ -1,5 +1,9 @@
 #include "Rewriter.hpp"
+#ifdef HAVE_CPP11
 #include "Rewriter_impl.hpp"
+#else
+#include "Rewriter_impl_old.hpp"
+#endif
 #include "Config.hpp"
 
 #include <ostream>

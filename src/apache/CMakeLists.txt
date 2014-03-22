@@ -1,7 +1,7 @@
 project (mod_cdnalizer)
 
 # Apache ap_config.h thinks that our c++ compiler doesn't support C99. Here we tell it we do (because all our imports are inside of extern "C" blocks anyway).
-add_definitions(-DAP_HAVE_C99)
+#add_definitions(-DAP_HAVE_C99 -DAP_HAVE_DESIGNATED_INITIALIZER)
 
 include_directories(${APR_INCLUDE_DIR})
 include_directories(${APRUTIL_INCLUDE_DIR})
@@ -9,8 +9,6 @@ include_directories(${APACHE_INCLUDE_DIR})
 
 if (HAVE_APACHE_2_4)
     add_definitions(-DHAVE_APACHE_2_4)
-else()
-    add_definitions(-DAP_HAVE_DESIGNATED_INITIALIZER)
 endif()
 
 if (STATIC_STDLIB_CXX)

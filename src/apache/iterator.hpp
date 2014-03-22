@@ -62,8 +62,13 @@ public:
         if (bb != nullptr)
             init4NewBucket();
     }
+    #ifdef HAVE_CPP11
     BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : BucketWrapper(bb, onFlush, APR_BRIGADE_FIRST(bb)) {}
     BucketWrapper() : BucketWrapper(nullptr, nullptr, nullptr) {} // We need to provide this to be a ForwardIterator
+    #else
+    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : bb(bb), onFlush(onFlush), _bucket(APR_BRIGADE_FIRST(bb)) {}
+    BucketWrapper() :  bb(bb), onFlush(NULL), _bucket(NULL) {}
+    #endif
     const char* begin() const { return data; }
     const char* end() const { return data + length; }
     /// Means we are the sentinel bucket; one past the end .. there is no more data to process
@@ -97,11 +102,24 @@ public:
 
 // Forward iterator working on Apache bucket Brigades
 struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char>  {
+    #ifdef HAVE_CPP11
     using Base = AbstractBlockIterator<const char*, BucketWrapper, const char>;
+    #else
+    typedef AbstractBlockIterator<const char*, BucketWrapper, const char> Base;
+    #endif
+    #ifdef HAVE_CPP11
     Iterator() = default;
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : AbstractBlockIterator({bb, onFlush, bucket}, position) {}
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
+    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : Base({bb, onFlush, bucket}, position) {}
+    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : Base({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
+    #else
+    Iterator() : Base() {}
+    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position=NULL)
+        : Base(BucketWrapper(bb, onFlush, bucket), position) {}
+    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position=NULL) 
+        : Base(BucketWrapper(bb, onFlush), position) {}
+    Iterator(const Iterator& other) : Base(other) {}
+    #endif
     /// Splits the block at the current position.
     /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)
     void split() {
