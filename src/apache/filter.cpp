@@ -1,6 +1,5 @@
 #include "filter.hpp"
 
-#include "../Rewriter.hpp"
 #ifdef HAVE_CPP11
 #include "../Rewriter_impl.hpp"
 #else
@@ -28,6 +27,8 @@ namespace apache {
 struct Flusher {
     ap_filter_t* filter;
     BrigadeGuard& completed_work;
+    Flusher(ap_filter_t* filter, BrigadeGuard& completed_work) : filter(filter), completed_work(completed_work) {}
+    Flusher(const Flusher& other) : filter(other.filter),  completed_work(other.completed_work) {}
     apr_status_t operator ()() {
         apr_status_t result = ap_pass_brigade(filter->next, completed_work);
         apr_brigade_cleanup(completed_work);
@@ -163,7 +164,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     #ifdef HAVE_CPP
     Iterator tag_start = rewriteHTML(location, *config, beginning, end, onUnchangedData, newData);
     #else
-    Iterator tag_start = rewriteHTML(location, *config, beginning, end, flusher, flusher);
+    Iterator tag_start = rewriteHTML<Iterator, char, Flusher&, Flusher&>(location, *config, beginning, end, flusher, flusher);
     #endif
 
     // Store any left over data for next time

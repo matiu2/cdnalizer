@@ -119,6 +119,7 @@ struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char> 
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position=NULL) 
         : Base(BucketWrapper(bb, onFlush), position) {}
     Iterator(const Iterator& other) : Base(other) {}
+    Iterator(Iterator&& other) : Base(std::move(other)) {}
     #endif
     /// Splits the block at the current position.
     /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)

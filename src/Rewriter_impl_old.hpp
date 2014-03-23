@@ -24,14 +24,14 @@ struct Rewriter {
     const Config& config;
     iterator start;
     iterator end;
-    std::binary_function<iterator&, iterator&, iterator> noChange;
+    RangeEvent&noChange;
     DataEvent newData;
 
     iterator nextNoChangeStart;
 
     Rewriter(const std::string& location, const Config& config,
              iterator start, iterator end,
-             std::binary_function<iterator&, iterator&, iterator> noChange, DataEvent newData) 
+             RangeEvent& noChange, DataEvent& newData) 
     : location(location), config(config), start(start), end(end), noChange(noChange), newData(newData), nextNoChangeStart(start) {}
 
     /** Given the start of an HTML <tag> it find the end of it.
@@ -153,7 +153,7 @@ struct Rewriter {
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
         try {
-            pair found = config.findCDNUrl(attrib_value);
+            Config::CDNRefPair found = config.findCDNUrl(attrib_value);
             const std::string& base_path=found.first;
             const std::string& cdn_url=found.second;
             // Check if the path we found is a substring of the value
@@ -167,10 +167,6 @@ struct Rewriter {
                     std::copy(cdn_url.begin(), cdn_url.end(), out);
                     // Push it out
                     // Make sure we got given actual event handlers
-                    #ifdef HAVE_CPP11
-                    assert(noChange);
-                    assert(newData);
-                    #endif
                     // Output the unchanged bits
                     // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
                     nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
@@ -197,7 +193,7 @@ struct Rewriter {
      *          We need to return it because if we split an iterator, all others around and after it may be invalidated.
      *
      * */
-    pair handleTag(const pair& tag) {
+    iterator handleTag(const pair& tag) {
         iterator tag_end = tag.second;
         // Get the tag name
         pair tag_name = getTagName(tag);
@@ -248,9 +244,6 @@ struct Rewriter {
             }
         } catch (Done e) {
             // We can push out the nuchanged data now
-            #ifdef HAVE_CPP11
-            assert(noChange);
-            #endif
             return noChange(nextNoChangeStart, e.pos);
         }
         return end;

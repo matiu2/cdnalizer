@@ -32,15 +32,18 @@ struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, c
     Block block;
     SubIterator position;
 
-    AbstractBlockIterator() = default;
     #ifdef HAVE_CPP11
+    AbstractBlockIterator() = default;
     AbstractBlockIterator(const Block& block, SubIterator position={}) : parent_type{}, block{block}, position{position ?  position : block.begin()} {}
     AbstractBlockIterator(const type& other) = default;
+    type& operator =(const type& other) = default;
     #else
+    AbstractBlockIterator() {}
     AbstractBlockIterator(const Block& block, SubIterator position=SubIterator()) : parent_type{}, block{block}, position{position ?  position : block.begin()} {}
     AbstractBlockIterator(const type& other) : block(other.block), position(other.position) {}
+    AbstractBlockIterator(type&& other) : block(std::move(other.block)), position(std::move(other.position)) {}
+    type& operator =(const type& other) { block = other.block; position = other.position; return *this; }
     #endif
-    type& operator =(const type& other) = default;
     value_type operator *() const { return *position; }
     value_type& operator *() { return *position; }
     value_type operator ->() const { return *position; }
