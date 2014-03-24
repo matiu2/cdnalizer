@@ -46,7 +46,7 @@ private:
             // We must send everything over to the next filter
             _bucket = APR_BRIGADE_SENTINEL(bb);
             length = 0;
-            data = nullptr;
+            data = NULL;
             return;
         } else {
             // Get the data out of the bucket if there is any
@@ -56,22 +56,17 @@ private:
     }
 public:
     BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush, apr_bucket* bucket)
-    : bb(bb), onFlush(onFlush), _bucket(bucket)
+    : bb(bb), onFlush(onFlush), _bucket(bucket), data(NULL)
     {
-        if (bb != nullptr)
+        if (bb != NULL)
             init4NewBucket();
     }
-    #ifdef HAVE_CPP11
-    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : BucketWrapper(bb, onFlush, APR_BRIGADE_FIRST(bb)) {}
-    BucketWrapper() : BucketWrapper(nullptr, nullptr, nullptr) {} // We need to provide this to be a ForwardIterator
-    #else
-    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : bb(bb), onFlush(onFlush), _bucket(APR_BRIGADE_FIRST(bb)) {}
-    BucketWrapper() :  bb(bb), onFlush(NULL), _bucket(NULL) {}
-    #endif
+    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : bb(bb), onFlush(onFlush), _bucket(APR_BRIGADE_FIRST(bb)) { init4NewBucket(); }
+    BucketWrapper() :  bb(bb), onFlush(NULL), _bucket(NULL), data(NULL) { init4NewBucket(); }
     const char* begin() const { return data; }
     const char* end() const { return data + length; }
     /// Means we are the sentinel bucket; one past the end .. there is no more data to process
-    bool isSentinel() const { return (bb == nullptr) || (_bucket == APR_BRIGADE_SENTINEL(bb)); }
+    bool isSentinel() const { return (bb == NULL) || (_bucket == APR_BRIGADE_SENTINEL(bb)); }
     bool operator ==(const BucketWrapper& other) const {
         if (isSentinel() && other.isSentinel())
             return true; // Assumes all iterators being compared are from the same bucket brigade.
