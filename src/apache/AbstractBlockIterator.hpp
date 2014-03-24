@@ -19,31 +19,17 @@ namespace apache {
  */
 template <typename SubIterator, typename Block, typename CharType=typename SubIterator::value_type>
 struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, char> {
-    #ifdef HAVE_CPP11
-    using parent_type=std::iterator<std::forward_iterator_tag, char>;
-    using type=AbstractBlockIterator<SubIterator, Block, CharType>;
-    using value_type=CharType;
-    #else
     typedef std::iterator<std::forward_iterator_tag, char> parent_type;
     typedef AbstractBlockIterator<SubIterator, Block, CharType> type;
     typedef CharType value_type;
-    #endif
 
     Block block;
     SubIterator position;
 
-    #ifdef HAVE_CPP11
-    AbstractBlockIterator() = default;
-    AbstractBlockIterator(const Block& block, SubIterator position={}) : parent_type{}, block{block}, position{position ?  position : block.begin()} {}
-    AbstractBlockIterator(const type& other) = default;
-    type& operator =(const type& other) = default;
-    #else
     AbstractBlockIterator() {}
-    AbstractBlockIterator(const Block& block, SubIterator position=SubIterator()) : parent_type{}, block{block}, position{position ?  position : block.begin()} {}
+    AbstractBlockIterator(const Block& block, SubIterator position=SubIterator()) : parent_type(), block(block), position(position ?  position : block.begin()) {}
     AbstractBlockIterator(const type& other) : block(other.block), position(other.position) {}
-    AbstractBlockIterator(type&& other) : block(std::move(other.block)), position(std::move(other.position)) {}
     type& operator =(const type& other) { block = other.block; position = other.position; return *this; }
-    #endif
     value_type operator *() const { return *position; }
     value_type& operator *() { return *position; }
     value_type operator ->() const { return *position; }
@@ -69,6 +55,15 @@ struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, c
     }
     bool operator !=(const type& other) const { return !(*this == other); }
     bool isAtStartOfBlock() const { return position == block.begin(); }
+    /// Splits the block at the current position.
+    /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)
+    void split() {
+        block.split(position);
+        if (position == block.end()) {
+            ++block;
+            position = block.begin();
+        }
+    }
 };
 
 }

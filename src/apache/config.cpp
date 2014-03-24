@@ -24,7 +24,7 @@ void* cdnalizer_create_dir_config(apr_pool_t* pool, char* context) {
     void* memory = apr_palloc(pool, sizeof(Config));
     Config* cfg;
     if (context)
-        cfg = new (memory) Config({}, context);
+        cfg = new (memory) Config(cdnalizer::Container(), context);
     else
         cfg = new (memory) Config();
     apr_pool_cleanup_register(pool, memory, &deleteConfig, &deleteConfig);

@@ -15,7 +15,11 @@ if(HAVE_CPP11)
     add_definitions(-std=c++11 -DHAVE_CPP11)
 endif()
 
-add_definitions(-std=c++0x -Wall -Wextra)
+add_definitions(-Wall -Wextra)
+
+include_directories(${APR_INCLUDE_DIR})
+include_directories(${APRUTIL_INCLUDE_DIR})
+include_directories(${APACHE_INCLUDE_DIR})
 
 set(BUILD_DISTRO DEB
     CACHE STRING "DEB or YUM - Debian/Ubuntu or centos. Currently only Ubuntu >= 13.10 is supported")

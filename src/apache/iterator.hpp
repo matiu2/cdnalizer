@@ -15,9 +15,8 @@ namespace cdnalizer {
 namespace apache {
 
 /// Wraps an APR bucket. Makes it useable in AbstractBlockIterator
+template <typename FlushHandler>
 class BucketWrapper {
-public:
-    typedef std::function<apr_status_t()> FlushHandler;
 private:
     apr_bucket_brigade* bb;
     FlushHandler onFlush;
@@ -57,7 +56,7 @@ private:
     }
 public:
     BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush, apr_bucket* bucket)
-    : bb{bb}, onFlush{onFlush}, _bucket{bucket}
+    : bb(bb), onFlush(onFlush), _bucket(bucket)
     {
         if (bb != nullptr)
             init4NewBucket();
@@ -101,47 +100,33 @@ public:
 };
 
 // Forward iterator working on Apache bucket Brigades
-struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char>  {
-    #ifdef HAVE_CPP11
-    using Base = AbstractBlockIterator<const char*, BucketWrapper, const char>;
-    #else
-    typedef AbstractBlockIterator<const char*, BucketWrapper, const char> Base;
-    #endif
-    #ifdef HAVE_CPP11
-    Iterator() = default;
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : Base({bb, onFlush, bucket}, position) {}
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : Base({bb, onFlush}, position) {}
-    Iterator(const Iterator& other) = default;
-    #else
+template <typename FlushHandler>
+struct Iterator : AbstractBlockIterator<const char*, BucketWrapper<FlushHandler>, const char>  {
+    typedef AbstractBlockIterator<const char*, BucketWrapper<FlushHandler>, const char> Base;
     Iterator() : Base() {}
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position=NULL)
-        : Base(BucketWrapper(bb, onFlush, bucket), position) {}
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position=NULL) 
-        : Base(BucketWrapper(bb, onFlush), position) {}
+    Iterator(apr_bucket_brigade* bb, FlushHandler onFlush, apr_bucket* bucket, char* position=NULL)
+        : Base(BucketWrapper<FlushHandler>(bb, onFlush, bucket), position) {}
+    Iterator(apr_bucket_brigade* bb, FlushHandler onFlush, char* position=NULL) 
+        : Base(BucketWrapper<FlushHandler>(bb, onFlush), position) {}
     Iterator(const Iterator& other) : Base(other) {}
-    Iterator(Iterator&& other) : Base(std::move(other)) {}
-    #endif
-    /// Splits the block at the current position.
-    /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)
-    void split() {
-        block.split(position);
-        if (position == block.end()) {
-            ++block;
-            position = block.begin();
-        }
+    Iterator& operator=(const Iterator& other) {
+        Base::operator=(other);
+        return *this;
     }
-    apr_bucket* bucket() const { return block.bucket(); }
+    apr_bucket* bucket() const { return Base::block.bucket(); }
     Iterator& operator++() { return static_cast<Iterator&>(Base::operator++()); }
     Iterator operator++ (int) {
         Iterator result(*this);
         operator++();
         return result;
     }
+    char operator *() const { return Base::operator*(); }
 };
 
 /// Convenience function to return the (one after the last) Iterator in a brigade
-Iterator EndIterator(apr_bucket_brigade* bb) {
-    return Iterator{bb, BucketWrapper::FlushHandler{}, APR_BRIGADE_SENTINEL(bb), 0};
+template <typename FlushHandler>
+Iterator<FlushHandler> EndIterator(apr_bucket_brigade* bb) {
+    return Iterator<FlushHandler>(bb, FlushHandler(), APR_BRIGADE_SENTINEL(bb), 0);
 }
 
 }

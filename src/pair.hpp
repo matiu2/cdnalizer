@@ -28,7 +28,7 @@ struct pair : std::pair<iterator, iterator> {
     pair(iterator first, iterator second) : ParentClass(first, second) {};
     /// Subscript into the selection
     char operator[](size_t i) const {
-        auto output = this->first;
+        iterator output = this->first;
         while ((i-- > 0) && (output++ != this->second));
         return *output;
     }
@@ -52,11 +52,9 @@ struct pair : std::pair<iterator, iterator> {
     }
     /// Compare to a string
     bool operator ==(const std::string& other) const {
-#ifdef HAVE_CPP11
-        return utils::equal(this->first, this->second, other.cbegin(), other.cend());
-#else
-        return utils::equal(this->first, this->second, other.begin(), other.end());
-#endif
+        iterator begin = this->first;
+        iterator end = this->second;
+        return utils::equal(begin, end, other.begin(), other.end());
     }
 };
 

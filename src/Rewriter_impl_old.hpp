@@ -16,6 +16,8 @@ struct Rewriter {
     /// An exception we throw when we have finished parsing the input, and catch in the main loop.
     struct Done {
         iterator pos;  /// The character that the next run should start with. (One past the last character we read).
+        Done() {}
+        Done(iterator pos) : pos(pos) {}
     }; 
     struct NotFound{}; /// Exception for if we can't find the attribute
     typedef cdnalizer::pair<iterator> pair;
@@ -52,7 +54,7 @@ struct Rewriter {
         iterator name_start = tag.first;
         iterator name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
-        return pair{name_start, name_end};
+        return pair(name_start, name_end);
     }
     static bool isWS(char c) {
         switch (c) {
@@ -65,6 +67,7 @@ struct Rewriter {
                 return false;
         }
     }
+    static bool isNotWS(char c) { return !isWS(c); }
     iterator find(iterator start, char c, iterator tag_end) {
         iterator res = std::find(start, tag_end, c);
         if (res == tag_end)
@@ -99,20 +102,20 @@ struct Rewriter {
                 ++pos;
                 // Check if this is the attribute we care about
                 // There must be an attribute name (' ' .. 'attrib_name' .. '=') not (" =")
-                using std::placeholders::_1;
                 // Skip over multiple adjacent whitespace before the attrib name
-                iterator attrib_name_start = std::find_if_not(after_space, equals, isWS);
+                iterator attrib_name_start = std::find_if(after_space, equals, isNotWS);
                 iterator attrib_name_end = std::find_if(attrib_name_start, equals, isWS);
-                pair attrib_name_range{attrib_name_start, attrib_name_end};
+                pair attrib_name_range(attrib_name_start, attrib_name_end);
                 // Check if the attribute name is the one we're looking for
-                if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), lower_compare))
-                    return pair{++quote1, quote2};
+                // ‘equal(Iterator<Flusher>&, Iterator<Flusher>&, __normal_iterator<const char*, string>, __normal_iterator<const char*, string>, bool (&)(char, char))’
+                if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), &lower_compare))
+                    return pair(++quote1, quote2);
             } catch (NotFound) {
                 // We couldn't find any more attributes in this tag
                 break;
             }
         }
-        return pair{tag_end, tag_end};
+        return pair(tag_end, tag_end);
     }
     /** Returns true if 'path' is relative.
      *
@@ -136,7 +139,7 @@ struct Rewriter {
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
         std::back_insert_iterator<std::string> value_putter = std::back_inserter(attrib_value);
-        long loc_len{0}; // The amount of chars we add, to make attrib_value look up in the DB
+        long loc_len = 0; // The amount of chars we add, to make attrib_value look up in the DB
         if (is_relative(attrib_range)) {   // eg. attrib_range='images/a.gif'
             // Prepend the attrib value with our current location if it's a relative path
             std::copy(location.begin(), location.end(), value_putter);  // eg. location='/blog'
@@ -163,7 +166,7 @@ struct Rewriter {
                     // If the attribute value starts with the base_path, replace the bit after with the new cdn url
                     std::string result;
                     result.reserve(cdn_url.length() + attrib_value.length() - base_path.length());
-                    auto out = back_inserter(result);
+                    std::back_insert_iterator<std::string> out = back_inserter(result);
                     std::copy(cdn_url.begin(), cdn_url.end(), out);
                     // Push it out
                     // Make sure we got given actual event handlers
@@ -221,25 +224,25 @@ struct Rewriter {
         try {
             while (pos != end) {
                 // Find the next tag
-                auto tag_start = std::find(pos, end, '<');
+                iterator tag_start = std::find(pos, end, '<');
                 if (tag_start == end)
                     // There are no more tags, send all the data
-                    throw Done{end};
-                auto next = tag_start;
+                    throw Done(end);
+                iterator next = tag_start;
                 if (++next == end)
                     // The tag is just before the end of the data, send everything before it
-                    throw Done{tag_start};
+                    throw Done(tag_start);
                 if (*next == '/') {
                     // This is a closing tag, continue the search
                     pos = next;
                     continue;
                 }
-                auto tag_end = findTagEnd(next);
+                iterator tag_end = findTagEnd(next);
                 if (tag_end == end)
                     // We don't have the end of the tag, copy up to the start of it and break
-                    throw Done{tag_start};
+                    throw Done(tag_start);
                 // We found a tag
-                pair tag{tag_start, tag_end};
+                pair tag(tag_start, tag_end);
                 pos = handleTag(tag);
             }
         } catch (Done e) {

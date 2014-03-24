@@ -24,23 +24,23 @@ private:
         if (bb != nullptr)
             apr_brigade_destroy(bb);
     }
-    void moveFromOther(BrigadeGuard&& other) {
+    void moveFromOther(BrigadeGuard& other) {
         assert(other.bb != bb); // That would be weird
         // Delete our current bb
         cleanup();
         // Steal our bro's brigade
         bb = other.bb;
-        other.bb = nullptr;
+        other.bb = NULL;
     }
 public:
     BrigadeGuard(apr_pool_t* pool, apr_bucket_alloc_t* list) {
         bb = apr_brigade_create(pool, list);
     }
     /// Move a bb from a bro
-    BrigadeGuard(BrigadeGuard&& other) { moveFromOther(std::move(other)); }
+    BrigadeGuard(BrigadeGuard& other) { moveFromOther(other); }
     ~BrigadeGuard() { cleanup(); }
-    BrigadeGuard& operator =(BrigadeGuard&& other) {
-        moveFromOther(std::move(other));
+    BrigadeGuard& operator =(BrigadeGuard& other) {
+        moveFromOther(other);
         return *this;
     }
     apr_bucket_brigade& operator *() { return *bb; }
