@@ -24,13 +24,7 @@ namespace std {
     inline bool operator <(const pair<string, string>& a, const string& b) { return a.first < b; }
 }
 
-namespace cdnalizer {
-
-#ifdef HAVE_CPP11
 using Container = std::map<std::string, std::string>;
-#else
-typedef std::map<std::string, std::string> Container;
-#endif
 
 const Container default_tag_attrib {
         {"a", "href"},
@@ -53,19 +47,14 @@ const Container default_tag_attrib {
         {"style", "src"}
 };
 
+namespace cdnalizer {
 
 class Config {
 public:
     /// A Pair type that *holds* 2 strings - used for search parameters
-#ifdef HAVE_CPP11
     using CDNPair = std::pair<std::string, std::string>;
     /// holds references to 2 strings - used for search results
     using CDNRefPair = std::pair<const std::string&, const std::string&>;
-#else
-    typedef std::pair<std::string, std::string> CDNPair;
-    /// holds references to 2 strings - used for search results
-    typedef std::pair<const std::string&, const std::string&> CDNRefPair;
-#endif
     /// Thrown when we can't find a suitable CDN url for a base path
     struct NotFound {};
 private:
@@ -99,23 +88,13 @@ private:
     }
     /// Absolutelize a path/url in place
     void absolutelize(std::string& path) {
-#ifdef HAVE_CPP11
         if (utils::is_relative(path.cbegin(), path.cend()))
             path.insert(0, base_location);
-#else
-        if (utils::is_relative(path.begin(), path.end()))
-            path.insert(0, base_location);
-#endif
     }
     /// Ensure base_location ends in '/'
     void ensureSlashOnEnd() {
-#ifdef HAVE_CPP11
         if (base_location.empty() || (base_location.back() != '/'))
             base_location.append("/");
-#else
-        if (base_location.empty() || (*base_location.rbegin() != '/'))
-            base_location.append("/");
-#endif
     }
 public:
     /** Initialize the configuration.
@@ -124,15 +103,9 @@ public:
      * @param base_location a base location to add on to all relative key urls; defaults to "/'
      * @param tag_attrib A map of tag names to the attribute we should check. Must all be lower case. eg. {{"a", "href"}}
      */
-#ifdef HAVE_CPP11
     Config(Container&& path_url={}, const char* base_location="/", Container&& tag_attrib={}) 
         : base_location{base_location},  path_url(path_url), tag_attrib(tag_attrib.empty() ? default_tag_attrib : tag_attrib ) 
     { ensureSlashOnEnd(); }
-#else
-    Config(Container path_url=Container(), const char* base_location="/", Container tag_attrib=Container()) 
-        : base_location{base_location},  path_url(path_url), tag_attrib(tag_attrib.empty() ? default_tag_attrib : tag_attrib ) 
-    { ensureSlashOnEnd(); }
-#endif
     /** Initialize the configuration.
      *
      * @param path_url a map of paths we'll find in the html, and their corresponding cdn urls. eg {["/images", "http://cdn.supa.ws/imgs"}}
@@ -158,12 +131,7 @@ public:
     }
     /// Include the values from another config object
     Config& operator +=(const Config& other) {
-#ifdef HAVE_CPP11
         for (auto pair : other.path_url) {
-#else
-        for (Container::const_iterator iPair=other.path_url.begin(); iPair != other.path_url.end(); iPair++) {
-            const Container::value_type& pair = *iPair;
-#endif
             auto inserted = path_url.insert(pair);
             // If it was already there, update the value
             if (!inserted.second)
