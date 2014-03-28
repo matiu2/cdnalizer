@@ -76,14 +76,15 @@ iterator rewriteHTML(const std::string& location, const Config& config,
         iterator pos = tag.first;
         while (pos != tag_end) {
             try {
-                // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
+                // Find ' ' .. tagName .. '=' .. [ ["'] ] .. tagValue .. \1
+                const std::string quotes="\"'";
                 iterator space = find(pos, ' ');
                 iterator after_space = space;
                 ++after_space;
                 iterator equals = find(space, '=');
-                iterator quote1 = find(equals, '"');
+                iterator quote1 = std::find_first_of(equals, tag_end, quotes.begin(), quotes.end());
                 iterator after_quote = quote1;
-                iterator quote2 = find(++after_quote, '"');
+                iterator quote2 = find(++after_quote, *quote1);
                 // Get ready for the next run
                 pos = quote2; 
                 ++pos;

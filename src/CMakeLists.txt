@@ -15,7 +15,13 @@ add_dependencies(test_rewriteHTML bandit)
 set_target_properties(test_rewriteHTML PROPERTIES
                       INCLUDE_DIRECTORIES "${BANDIT_INCLUDE_DIR}")
 add_test(test_rewriteHTML test_rewriteHTML)
-include_directories()
+
+add_executable(test_rewriteHTML_string test_rewriteHTML_string.cpp)
+target_link_libraries(test_rewriteHTML_string stream)
+add_dependencies(test_rewriteHTML_string bandit)
+set_target_properties(test_rewriteHTML_string PROPERTIES
+                      INCLUDE_DIRECTORIES "${BANDIT_INCLUDE_DIR}")
+add_test(test_rewriteHTML_string test_rewriteHTML_string)
 
 add_executable(test_config test_config.cpp)
 target_link_libraries(test_config stream)

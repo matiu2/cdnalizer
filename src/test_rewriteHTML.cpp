@@ -1,3 +1,7 @@
+/**
+ * Tests RewriteHTML at a low level. 
+ * Ensure's events are triggered correctly and that blocks are processed correctly.
+ **/
 #include "Rewriter.hpp"
 #include "Rewriter_impl.hpp"
 #include "Config.hpp"
@@ -81,7 +85,6 @@ go_bandit([](){
 
     using namespace std::placeholders;
     auto doRewrite = std::bind(cdnalizer::rewriteHTML<Iterator>, location, _3, _1, _2, unchanged, newData);
-    //auto doRewrite = [&](Iterator start, Iterator end) { cdnalizer::rewriteHTML(location, cfg, start, end, unchanged, newData); };
 
     before_each([&]() {
         sequence = 1;
@@ -100,7 +103,7 @@ go_bandit([](){
         AssertThat(block.end, Is().EqualTo(data.cend()));
     };
 
-    describe("Simple Rewrite HTML", [&](){
+    describe("Low level Rewrite HTML", [&](){
 
         it("1. Returns unchanged when there are no tags", [&](){
             const std::string data{"There are no tags here"};
@@ -174,6 +177,7 @@ go_bandit([](){
             block = unchanged_blocks.at(2);
             AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin()+40, data.cend()}));
         });
+
     });
 });
 
