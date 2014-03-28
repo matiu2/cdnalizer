@@ -84,9 +84,11 @@ struct Rewriter {
      * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
     pair findAttribute(const pair& tag, const std::string& attrib_name) {
+        const std::string quotes="\"'";
 
         iterator tag_end = tag.second;
         iterator pos = tag.first;
+
         while (pos != tag_end) {
             try {
                 // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
@@ -94,9 +96,9 @@ struct Rewriter {
                 iterator after_space = space;
                 ++after_space;
                 iterator equals = find(space, '=', tag_end);
-                iterator quote1 = find(equals, '"', tag_end);
+                iterator quote1 = std::find_first_of(equals, tag_end, quotes.begin(), quotes.end());
                 iterator after_quote = quote1;
-                iterator quote2 = find(++after_quote, '"', tag_end);
+                iterator quote2 = find(++after_quote, *quote1, tag_end);
                 // Get ready for the next run
                 pos = quote2; 
                 ++pos;
