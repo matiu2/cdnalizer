@@ -30,24 +30,12 @@ set(STATIC_STDLIB_CXX Off
 set(USE_SYSTEM_APACHE On
     CACHE BOOL "Find apache on your system, or use the embeded 2.2 headers")
 
-if (USE_SYSTEM_APACHE)
-    # APR - Apache Portable Runtime
-    find_package(apr REQUIRED)
-    # Apache - include files
-    find_package(Apache REQUIRED)
-    if(${APACHE_VERSION} MATCHES 2.4*)
-        set(HAVE_APACHE_2_4)
-    endif()
-else()
-    set(APR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/apr-1.3.9)
-    set(APRUTIL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/apr-util-1.3.9)
-    set(APACHE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/httpd-2.2.26)
-    MARK_AS_ADVANCED(
-      APR_LIBRARY
-      APRUTIL_INCLUDE_DIR
-      APR_INCLUDE_DIR
-      APACHE_INCLUDE_DIR
-     )
+# APR - Apache Portable Runtime
+find_package(apr REQUIRED)
+# Apache - include files
+find_package(Apache REQUIRED)
+if(NOT ${APACHE_VERSION} MATCHES 2.4*)
+    message(FATAL_ERROR "Cannot find Apache 2.4 - Found: ${APACHE_VERSION}")
 endif()
 
 file(COPY dev-tools DESTINATION .)

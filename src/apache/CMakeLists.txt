@@ -7,12 +7,6 @@ include_directories(${APR_INCLUDE_DIR})
 include_directories(${APRUTIL_INCLUDE_DIR})
 include_directories(${APACHE_INCLUDE_DIR})
 
-if (HAVE_APACHE_2_4)
-    add_definitions(-DHAVE_APACHE_2_4)
-else()
-    add_definitions(-DAP_HAVE_DESIGNATED_INITIALIZER)
-endif()
-
 if (STATIC_STDLIB_CXX)
     add_definitions(-static-libstdc++ -static-libgcc)
 endif()

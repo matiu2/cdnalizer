@@ -11,9 +11,7 @@ extern "C" {
 #include <apr_buckets.h>
 #include <http_log.h>
 
-#ifdef HAVE_APACHE_2_4
 APLOG_USE_MODULE(cdnalizer_module);
-#endif
 
 }
 
