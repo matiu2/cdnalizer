@@ -46,10 +46,25 @@ go_bandit([](){
     });
 
     describe("High level Rewrite HTML", [&](){
-        it("Handles double quote attributes", [&](){
+        it("1. Handles double quote attributes", [&](){
             std::string input(R"**(<img src="/images/a.gif">)**");
             doRewrite(input);
             AssertThat(output, Is().EqualTo(R"**(<img src="http://cdn.supa.ws/imgs/a.gif">)**"));
+        });
+        it("2. Handles single quote attributes", [&](){
+            std::string input(R"**(<img src="/images/a.gif">)**");
+            doRewrite(input);
+            AssertThat(output, Is().EqualTo(R"**(<img src="http://cdn.supa.ws/imgs/a.gif">)**"));
+        });
+        it("3. Fails with double-single quote attributes", [&](){
+            std::string input(R"**(<img src="/images/a.gif'>)**");
+            doRewrite(input);
+            AssertThat(output, Is().EqualTo(R"**(<img src="/images/a.gif'>)**"));
+        });
+        it("4. Fails with single-double quote attributes", [&](){
+            std::string input(R"**(<img src='/images/a.gif">)**");
+            doRewrite(input);
+            AssertThat(output, Is().EqualTo(R"**(<img src='/images/a.gif">)**"));
         });
     });
 
