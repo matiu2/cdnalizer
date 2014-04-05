@@ -1,5 +1,10 @@
 #pragma once
-/** Actually does the work of the filter */
+/**
+ * Actually does the work of the filter
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ **/
 
 extern "C" {
 #include <util_filter.h>

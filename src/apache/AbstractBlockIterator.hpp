@@ -1,5 +1,10 @@
 #pragma once
-/** Iterator for going over Apache  APR_BUCKET_LISTS */
+/**
+ * Iterator for going over Apache  APR_BUCKET_LISTS
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ **/
 
 #include <iterator>
 

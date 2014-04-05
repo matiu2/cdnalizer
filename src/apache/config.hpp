@@ -1,7 +1,12 @@
 #pragma once
-/** Loads the Apache config into our generic config object.
+/**
+ * Loads the Apache config into our generic config object.
  *
  *  These functions are registered with Apach in mod_cdnalizer.cpp
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ *
  **/
 
 // Our C style parts for Apache registration

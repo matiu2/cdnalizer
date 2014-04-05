@@ -1,5 +1,10 @@
-/** Utilitiies to help make the C more ++ier */
 #pragma once
+/**
+ * Utilitiies to help make the C more ++ier
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ **/
 
 #include <cassert>
 #include <stdexcept>
