@@ -83,8 +83,9 @@ go_bandit([](){
         new_blocks.push_back(SequencedNewData(sequence++, data));
     };
 
-    using namespace std::placeholders;
-    auto doRewrite = std::bind(cdnalizer::rewriteHTML<Iterator>, location, _3, _1, _2, unchanged, newData);
+    auto doRewrite = [&](std::string::const_iterator start, const Iterator& end, const Config& cfg) {
+        return cdnalizer::rewriteHTML<Iterator>(location, cfg, start, end, unchanged, newData);
+    };
 
     before_each([&]() {
         sequence = 1;

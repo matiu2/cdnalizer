@@ -9,6 +9,7 @@
 #include <ostream>
 #include <string>
 #include <iterator>
+#include <sstream>
 
 #include <bandit/bandit.h>
 
@@ -24,6 +25,7 @@ go_bandit([](){
     cdnalizer::Config cfg{
         {{"/images", "http://cdn.supa.ws/imgs"}}
     };
+    std::string server = "https://supa.ws";
     std::string location = "/blog";
 
     RangeEvent<iterator> unchanged = [&](iterator start, iterator end) {
@@ -38,7 +40,7 @@ go_bandit([](){
 
     using namespace std::placeholders;
     auto doRewrite = [&](const std::string& input) {
-        return cdnalizer::rewriteHTML(location, cfg, input.cbegin(), input.cend(), unchanged, newData);
+        return cdnalizer::rewriteHTML(server, location, cfg, input.cbegin(), input.cend(), unchanged, newData);
     };
 
     before_each([&]() {
@@ -52,19 +54,29 @@ go_bandit([](){
             AssertThat(output, Is().EqualTo(R"**(<img src="http://cdn.supa.ws/imgs/a.gif">)**"));
         });
         it("2. Handles single quote attributes", [&](){
+            // See: http://www.w3.org/TR/html4/intro/sgmltut.html#h-3.2.2
             std::string input(R"**(<img src="/images/a.gif">)**");
             doRewrite(input);
             AssertThat(output, Is().EqualTo(R"**(<img src="http://cdn.supa.ws/imgs/a.gif">)**"));
         });
         it("3. Fails with double-single quote attributes", [&](){
+            // See: http://www.w3.org/TR/html4/intro/sgmltut.html#h-3.2.2
             std::string input(R"**(<img src="/images/a.gif'>)**");
             doRewrite(input);
             AssertThat(output, Is().EqualTo(R"**(<img src="/images/a.gif'>)**"));
         });
         it("4. Fails with single-double quote attributes", [&](){
+            // See: http://www.w3.org/TR/html4/intro/sgmltut.html#h-3.2.2
             std::string input(R"**(<img src='/images/a.gif">)**");
             doRewrite(input);
             AssertThat(output, Is().EqualTo(R"**(<img src='/images/a.gif">)**"));
+        });
+        it("5. Rewrites full server urls correctly", [&](){
+            AssertThat(server, Is().Not().EqualTo(""));
+            std::stringstream input;
+            input << "<img src=\"" << server << "/images/a.gif\">";
+            doRewrite(input.str());
+            AssertThat(output, Is().EqualTo(R"**(<img src="http://cdn.supa.ws/imgs/a.gif">)**"));
         });
     });
 

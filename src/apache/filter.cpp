@@ -6,9 +6,12 @@
 #include "iterator.hpp"
 #include "mod_cdnalizer.hpp"
 
+#include <sstream>
+
 extern "C" {
 
 #include <apr_buckets.h>
+#include <http_core.h>
 #include <http_log.h>
 
 APLOG_USE_MODULE(cdnalizer_module);
@@ -97,8 +100,18 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     const char* log_location = location.c_str();
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, filter->r, "Filtering Location: %s", log_location);
 
+    // Get the server name and protocol
+    const char* server_name = ap_get_server_name_for_url(filter->r);
+    apr_port_t port = ap_get_server_port(filter->r);
+    const char* protocol = ap_get_server_protocol(filter->r->server);
+    std::stringstream hostname;
+    hostname << protocol << "://" << server_name;
+    if (!((strcmp(protocol, "https") == 0) && (port == 443)) &&
+        !((strcmp(protocol, "http") == 0) && (port == 80)))
+        hostname << ':' << port;
+
     // Do the actual rewriting now
-    Iterator tag_start = rewriteHTML(location, *config, beginning, end, onUnchangedData, newData);
+    Iterator tag_start = rewriteHTML(hostname.str(), location, *config, beginning, end, onUnchangedData, newData);
 
     // Store any left over data for next time
     if (tag_start != end) {
