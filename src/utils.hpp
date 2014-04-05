@@ -54,8 +54,8 @@ bool is_relative(Iterator start, const Iterator& end) {
     if (match.first == http.end()) {
         // Check http:// and https://
         Iterator checkStart = match.second;
-        if (*++checkStart != 's')
-            checkStart = match.second;
+        if (*checkStart == 's')
+            ++checkStart;
         const std::string protocol = "://";
         Match match = utils::mismatch(protocol.begin(), protocol.end(), checkStart, end);
         if (match.first == protocol.end())

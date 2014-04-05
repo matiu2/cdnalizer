@@ -5,9 +5,12 @@
 #include "iterator.hpp"
 #include "mod_cdnalizer.hpp"
 
+#include <sstream>
+
 extern "C" {
 
 #include <apr_buckets.h>
+#include <http_core.h>
 #include <http_log.h>
 
 #ifdef HAVE_APACHE_2_4
@@ -103,12 +106,22 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         return flusher();
     }
 
+    // Get the server name and protocol
+    const char* server_name = ap_get_server_name(filter->r);
+    apr_port_t port = ap_get_server_port(filter->r);
+    const char* protocol = ap_get_server_protocol(filter->r->server);
+    std::stringstream hostname;
+    hostname << protocol << "://" << server_name;
+    if (!((strcmp(protocol, "https") == 0) && (port == 443)) &&
+        !((strcmp(protocol, "http") == 0) && (port == 80)))
+        hostname << ':' << port;
+
     // Log that we're gonna do some work
     const char* log_location = location.c_str();
-    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, filter->r, "Filtering Location: %s", log_location);
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, filter->r, "Filtering Location: %s %s", log_location, hostname.str().c_str());
 
     // Do the actual rewriting now
-    iterator tag_start = rewriteHTML<iterator, char, Flusher&, Flusher&>(location, *config, beginning, end, flusher, flusher);
+    iterator tag_start = rewriteHTML<iterator, char, Flusher&, Flusher&>(hostname.str(), location, *config, beginning, end, flusher, flusher);
 
     // Store any left over data for next time
     if (tag_start != end) {

@@ -17,6 +17,10 @@ namespace cdnalizer {
  *  You can handle them how you like. That way, whatever output mechanism you use, you
  *  should be able to use it efficiently with little to no data copying.
  *
+ * @param server_url
+ *                 The server_url will start with http:// eg. http://www.supa.ws
+ *                 and any urls we find starting with that, will be normalized down, eg. http://www.supa.ws/images/x.gif would
+ *                 become /images/x.gif for the sake of searching
  * @param location the base location in the file system, or URL hierachy.
  *                 For expample if location is '/people' and we see a relative url like '<img src="images/a.gif" />'
  *                 we'll treat that url as /people/images/a.gif.
@@ -33,7 +37,7 @@ namespace cdnalizer {
  */
 /// Used for events that generate new data
 template <typename iterator, typename char_type, typename RangeEvent, typename DataEvent>
-iterator rewriteHTML(const std::string& location, const Config& config,
+iterator rewriteHTML(const std::string& server_url, const std::string& location, const Config& config,
                  iterator start, iterator end,
                  RangeEvent noChange, DataEvent newData);
 

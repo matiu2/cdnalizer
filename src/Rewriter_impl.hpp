@@ -22,6 +22,7 @@ struct Rewriter {
     struct NotFound{}; /// Exception for if we can't find the attribute
     typedef cdnalizer::pair<iterator> pair;
 
+    const std::string& server_url;
     const std::string& location;
     const Config& config;
     iterator start;
@@ -31,10 +32,10 @@ struct Rewriter {
 
     iterator nextNoChangeStart;
 
-    Rewriter(const std::string& location, const Config& config,
+    Rewriter(const std::string& server_url, const std::string& location, const Config& config,
              iterator start, iterator end,
              RangeEvent& noChange, DataEvent& newData) 
-    : location(location), config(config), start(start), end(end), noChange(noChange), newData(newData), nextNoChangeStart(start) {}
+    : server_url(server_url), location(location), config(config), start(start), end(end), noChange(noChange), newData(newData), nextNoChangeStart(start) {}
 
     /** Given the start of an HTML <tag> it find the end of it.
      * @return The end of the tag, or the end of the input if there was no tag end */
@@ -141,19 +142,35 @@ struct Rewriter {
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
         std::back_insert_iterator<std::string> value_putter = std::back_inserter(attrib_value);
-        long loc_len = 0; // The amount of chars we add, to make attrib_value look up in the DB
+
+        long added_chars = 0; // The amount of chars we add, to make attrib_value look up in the DB
+        iterator copying_start = attrib_range.first; // Where we start copying the attribute from for search
+        bool included_server_url = false;
+
         if (is_relative(attrib_range)) {   // eg. attrib_range='images/a.gif'
             // Prepend the attrib value with our current location if it's a relative path
             std::copy(location.begin(), location.end(), value_putter);  // eg. location='/blog'
-            loc_len = location.length();
+            added_chars = location.length();
             if (*location.rbegin() != '/') {
                 *value_putter++ = '/';
-                ++loc_len;
+                ++added_chars;
             } // eg. attrib_value='/blog/'
+        } else {
+            // See if we need to strip off the server_url in order to search better
+            if (!server_url.empty()) {
+                std::pair<std::string::const_iterator, iterator> match = utils::mismatch(server_url.begin(), server_url.end(), attrib_range.first, attrib_range.second);
+                if (match.first == server_url.end()) {
+                    copying_start = match.second;
+                    included_server_url = true;
+                }
+            }
         }
-        std::copy(attrib_range.first, attrib_range.second, value_putter);
+        
+        // Now copy the bit we need to use for searching from the attribute
+        std::copy(copying_start, attrib_range.second, value_putter);
+
         // eg. attrib_value='/blog/images/a.gif'
-        // eg. loc_len = 6 = len('/blog/')
+        // eg. added_chars = 6 = len('/blog/')
 
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
@@ -175,10 +192,16 @@ struct Rewriter {
                     // Output the unchanged bits
                     // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
                     nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
+                    // At this point **all iterators** apart from nextNoChangeStart may be **corrupt and useless** and should not be used.
+                    // This is because the noChange callback may drop any old data before nextNoChangeStart
                     // Send on the new data
                     newData(cdn_url);
                     // Move the nextNoChangeStart on to the end of the value
-                    for(size_t i=0; i < base_path.length()-loc_len; ++i)
+                    size_t increment = base_path.length();
+                    if (included_server_url)
+                        increment += server_url.length();
+                    increment -= added_chars;
+                    for(size_t i=0; i < increment; ++i)
                         ++nextNoChangeStart;
                     return true;
                 }        
@@ -256,11 +279,11 @@ struct Rewriter {
 };
 
 template <typename iterator, typename char_type, typename RangeEvent, typename DataEvent>
-iterator rewriteHTML(const std::string& location, const Config& config,
+iterator rewriteHTML(const std::string& server_url, const std::string& location, const Config& config,
                      iterator start, iterator end,
                      RangeEvent noChange, DataEvent newData) 
 {
-    Rewriter<iterator, char_type, RangeEvent, DataEvent> rewriter(location, config, start, end, noChange, newData);
+    Rewriter<iterator, char_type, RangeEvent, DataEvent> rewriter(server_url, location, config, start, end, noChange, newData);
     return rewriter.run();
 }
 
