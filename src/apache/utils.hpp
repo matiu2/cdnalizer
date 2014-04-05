@@ -12,16 +12,12 @@ extern "C" {
 namespace cdnalizer {
 namespace apache {
 
-#ifndef HAVE_CPP11
-#define nullptr NULL
-#endif
-
 /** RAII guarded bucket brigade **/
 class BrigadeGuard {
 private:
     apr_bucket_brigade* bb;
     void cleanup() {
-        if (bb != nullptr)
+        if (bb != NULL)
             apr_brigade_destroy(bb);
     }
     void moveFromOther(BrigadeGuard& other) {

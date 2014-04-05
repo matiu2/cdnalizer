@@ -1,6 +1,6 @@
 #include "filter.hpp"
 
-#include "../Rewriter_impl_old.hpp"
+#include "../Rewriter_impl.hpp"
 #include "../Config.hpp"
 #include "iterator.hpp"
 #include "mod_cdnalizer.hpp"

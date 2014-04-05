@@ -52,31 +52,16 @@ struct BadRead{};
 template <typename CharType, typename stream_type=std::basic_istream<CharType>>
 class BaseIterator : public std::iterator<std::forward_iterator_tag, CharType> {
 public:
-#ifdef HAVE_CPP11
-    using char_type = CharType;
-    using type = BaseIterator<char>;
-    using buffer_type = std::vector<char_type>;
-    using p_buffer_type = std::shared_ptr<std::vector<char_type>>;
-    using buffer_offset = typename buffer_type::size_type;
-#else
     typedef CharType char_type;
     typedef BaseIterator<char> type;
     typedef std::vector<char_type> buffer_type;
     typedef std::shared_ptr<std::vector<char_type>> p_buffer_type;
     typedef typename buffer_type::size_type buffer_offset;
-#endif
 private:
-#ifdef HAVE_CPP11
-    stream_type* stream = nullptr;
-    char_type value = 0;
-    p_buffer_type buffer;
-    buffer_offset buf_pos{};
-#else
     stream_type* stream;
     char_type value;
     p_buffer_type buffer;
     buffer_offset buf_pos;
-#endif
 
     /// Returns true if we can't be incremented any more
     bool isEOF() const {
@@ -163,12 +148,7 @@ public:
     }
 };
 
-
-#ifdef HAVE_CPP11
-using Iterator=BaseIterator<char>;
-#else
 typedef BaseIterator<char> Iterator;
-#endif
 
 }
 }

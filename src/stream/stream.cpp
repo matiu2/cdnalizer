@@ -1,41 +1,11 @@
 #include "stream.hpp"
 #include "../Rewriter.hpp"
-#ifdef HAVE_CPP11
 #include "../Rewriter_impl.hpp"
-#else
-#include "../Rewriter_impl_old.hpp"
-#endif
 #include "iterator.hpp"
 
 namespace cdnalizer {
 namespace stream {
 
-#ifdef HAVE_CPP11
-void rewriteHTML(const std::string& location,
-                 const Config& config,
-                 std::istream& html,
-                 std::ostream& output)
-{
-    // Sort out our iterators
-    Iterator in_start(html);
-    Iterator in_end{};
-
-    std::ostream_iterator<char> out(output);
-
-    // Event handlers
-    auto noChange = [&out](Iterator a, Iterator b) { std::copy(a, b, out); return b; };
-    auto newData = [&output](const std::string& data) { output << data; };
-    
-    // Parse the html
-    auto done = cdnalizer::rewriteHTML<Iterator>(
-        location, config, in_start, in_end,
-        noChange, newData);
-
-    // Just ignore extra output - and push it out
-    if (done != in_end)
-        std::copy(done, in_end, out);
-}
-#else
 struct Rewriter {
     std::ostream& output;
     std::ostream_iterator<char> out;
@@ -90,8 +60,6 @@ void rewriteHTML(const std::string& location,
 {
     Rewriter rewriter(location, config, html, output);
 }
-#endif
 
 }
-
 }

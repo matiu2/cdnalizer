@@ -1,3 +1,4 @@
+/// A C++03 implementation of Rewriter
 #pragma once
 #include "Rewriter.hpp"
 
@@ -10,23 +11,34 @@
 
 namespace cdnalizer {
 
-template <typename iterator, typename char_type>
-iterator rewriteHTML(const std::string& location, const Config& config,
-                     iterator start, iterator end,
-                     RangeEvent<iterator> noChange, DataEvent newData) 
-{
-    using pair = cdnalizer::pair<iterator>;
-
+template <typename iterator, typename char_type, typename RangeEvent, typename DataEvent>
+struct Rewriter {
     /// An exception we throw when we have finished parsing the input, and catch in the main loop.
     struct Done {
         iterator pos;  /// The character that the next run should start with. (One past the last character we read).
+        Done() {}
+        Done(iterator pos) : pos(pos) {}
     }; 
+    struct NotFound{}; /// Exception for if we can't find the attribute
+    typedef cdnalizer::pair<iterator> pair;
 
-    iterator nextNoChangeStart = start;
+    const std::string& location;
+    const Config& config;
+    iterator start;
+    iterator end;
+    RangeEvent&noChange;
+    DataEvent newData;
+
+    iterator nextNoChangeStart;
+
+    Rewriter(const std::string& location, const Config& config,
+             iterator start, iterator end,
+             RangeEvent& noChange, DataEvent& newData) 
+    : location(location), config(config), start(start), end(end), noChange(noChange), newData(newData), nextNoChangeStart(start) {}
 
     /** Given the start of an HTML <tag> it find the end of it.
      * @return The end of the tag, or the end of the input if there was no tag end */
-    auto findTagEnd = [&](iterator start) {
+    iterator findTagEnd(iterator start) {
         while (start != end) {
             if (*start == '<')
                 break;
@@ -35,80 +47,78 @@ iterator rewriteHTML(const std::string& location, const Config& config,
             ++start;
         }
         return start;
-    };
-
+    }
     /// Takes the start and end of a tag and retuns the tag name.
-    auto getTagName = [](const pair& tag) {
+    pair getTagName(const pair& tag) {
         const std::string ws=" \t\r\n";
         iterator name_start = tag.first;
         iterator name_end = std::find_first_of(++name_start, tag.second, ws.begin(), ws.end());
         // Return the result
-        return pair{name_start, name_end};
+        return pair(name_start, name_end);
+    }
+    static bool isWS(char c) {
+        switch (c) {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                return true;
+            default:
+                return false;
+        }
+    }
+    static bool isNotWS(char c) { return !isWS(c); }
+    iterator find(iterator start, char c, iterator tag_end) {
+        iterator res = std::find(start, tag_end, c);
+        if (res == tag_end)
+            throw NotFound();
+        return res;
     };
-
+    /// Case insensitive compare
+    static bool lower_compare(char_type a, char_type b) {
+        return std::tolower(a) == std::tolower(b);
+    };
     /** Returns the start and end of the attribute value that you want
      * @param tag The range that of the tag, within which we'll search
      * @param attrib_name The attribute name that we're searching for. Must be all lower case.
      * @return the start and end of the attribute value, or {tag.second, tag.second} if the attribute is not found
      */
-    auto findAttribute = [](const pair& tag, const std::string& attrib_name) {
-        struct NotFound{}; /// Exception for if we can't find the attribute
-
-        auto isWS = [](char c) {
-            switch (c) {
-                case ' ':
-                case '\t':
-                case '\n':
-                case '\r':
-                    return true;
-                default:
-                    return false;
-            }
-        };
+    pair findAttribute(const pair& tag, const std::string& attrib_name) {
+        const std::string quotes="\"'";
 
         iterator tag_end = tag.second;
-        auto find = [=](iterator start, char c) {
-            iterator res = std::find(start, tag_end, c);
-            if (res == tag_end)
-                throw NotFound();
-            return res;
-        };
         iterator pos = tag.first;
+
         while (pos != tag_end) {
             try {
                 // Find ' ' .. tagName .. '=' .. '"' .. tagValue .. '"'
-                iterator space = find(pos, ' ');
+                iterator space = find(pos, ' ', tag_end);
                 iterator after_space = space;
                 ++after_space;
-                iterator equals = find(space, '=');
-                iterator quote1 = find(equals, '"');
+                iterator equals = find(space, '=', tag_end);
+                iterator quote1 = std::find_first_of(equals, tag_end, quotes.begin(), quotes.end());
                 iterator after_quote = quote1;
-                iterator quote2 = find(++after_quote, '"');
+                iterator quote2 = find(++after_quote, *quote1, tag_end);
                 // Get ready for the next run
                 pos = quote2; 
                 ++pos;
                 // Check if this is the attribute we care about
                 // There must be an attribute name (' ' .. 'attrib_name' .. '=') not (" =")
-                using std::placeholders::_1;
                 // Skip over multiple adjacent whitespace before the attrib name
-                iterator attrib_name_start = std::find_if_not(after_space, equals, isWS);
+                iterator attrib_name_start = std::find_if(after_space, equals, isNotWS);
                 iterator attrib_name_end = std::find_if(attrib_name_start, equals, isWS);
-                pair attrib_name_range{attrib_name_start, attrib_name_end};
+                pair attrib_name_range(attrib_name_start, attrib_name_end);
                 // Check if the attribute name is the one we're looking for
-                // Case insensitive compare
-                auto lower_compare = [](char_type a, char_type b) {
-                    return std::tolower(a) == std::tolower(b);
-                };
-                if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), lower_compare))
-                    return pair{++quote1, quote2};
+                // ‘equal(Iterator<Flusher>&, Iterator<Flusher>&, __normal_iterator<const char*, string>, __normal_iterator<const char*, string>, bool (&)(char, char))’
+                if (utils::equal(attrib_name_start, attrib_name_end, attrib_name.begin(), attrib_name.end(), &lower_compare))
+                    return pair(++quote1, quote2);
             } catch (NotFound) {
                 // We couldn't find any more attributes in this tag
                 break;
             }
         }
-        return pair{tag_end, tag_end};
-    };
-
+        return pair(tag_end, tag_end);
+    }
     /** Returns true if 'path' is relative.
      *
      * ie. if it doesn't start with '/', 'http://', or 'https://'
@@ -116,10 +126,9 @@ iterator rewriteHTML(const std::string& location, const Config& config,
      * @param path We'll check if this is relative, or ablosute
      * @return true of 'path' is relative or empty
      **/
-    auto is_relative = [](const pair& path) {
+    static bool is_relative(const pair& path) {
         return utils::is_relative(path.first, path.second);
-    };
-
+    }
     /** Takes the start and end of the attribute value that we care about and emits events, possibly changing the value.
      *
      * If we don't have anything to change, just outputs nothing and leaves nextNoChangeStart unchanged
@@ -128,16 +137,16 @@ iterator rewriteHTML(const std::string& location, const Config& config,
      * @returns true if all iterators after attrib start need recalculating
      *
      */
-    auto handleAttributeValue = [&](const pair& attrib_range) {
+    bool handleAttributeValue(const pair& attrib_range) {
         // Work out the attrib value we'll search the config DB for
         std::string attrib_value;
-        auto value_putter = std::back_inserter(attrib_value);
-        long loc_len{0}; // The amount of chars we add, to make attrib_value look up in the DB
+        std::back_insert_iterator<std::string> value_putter = std::back_inserter(attrib_value);
+        long loc_len = 0; // The amount of chars we add, to make attrib_value look up in the DB
         if (is_relative(attrib_range)) {   // eg. attrib_range='images/a.gif'
             // Prepend the attrib value with our current location if it's a relative path
             std::copy(location.begin(), location.end(), value_putter);  // eg. location='/blog'
             loc_len = location.length();
-            if (location.back() != '/') {
+            if (*location.rbegin() != '/') {
                 *value_putter++ = '/';
                 ++loc_len;
             } // eg. attrib_value='/blog/'
@@ -149,22 +158,20 @@ iterator rewriteHTML(const std::string& location, const Config& config,
         // See if we have a replacement, if we search for /images/abc.gif .. we'll get the CDN for /images/ (if that's in the config)
         // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
         try {
-            auto found = config.findCDNUrl(attrib_value);
+            Config::CDNRefPair found = config.findCDNUrl(attrib_value);
             const std::string& base_path=found.first;
             const std::string& cdn_url=found.second;
             // Check if the path we found is a substring of the value
             if (attrib_value.length() > base_path.length()) {
-                auto match = std::mismatch(base_path.cbegin(), base_path.cend(), attrib_value.begin());
-                if (match.first == base_path.cend()) {
+                std::pair<std::string::const_iterator, std::string::const_iterator> match = std::mismatch(base_path.begin(), base_path.end(), attrib_value.begin());
+                if (match.first == base_path.end()) {
                     // If the attribute value starts with the base_path, replace the bit after with the new cdn url
                     std::string result;
                     result.reserve(cdn_url.length() + attrib_value.length() - base_path.length());
-                    auto out = back_inserter(result);
+                    std::back_insert_iterator<std::string> out = back_inserter(result);
                     std::copy(cdn_url.begin(), cdn_url.end(), out);
                     // Push it out
                     // Make sure we got given actual event handlers
-                    assert(noChange);
-                    assert(newData);
                     // Output the unchanged bits
                     // Next time the 'unchanged data' will start with the part of the attrib value after the base_path (that has been replaced)
                     nextNoChangeStart = noChange(nextNoChangeStart, attrib_range.first);
@@ -179,7 +186,6 @@ iterator rewriteHTML(const std::string& location, const Config& config,
         } catch (Config::NotFound) {}
         return false; // We can't replace that path, just carry on..
     };
-
     /** Once we've found a tag, handles checking, then possibly emiting events to change the attribute.
      *
      * If we change one of the attributes, emit the 'noChange' event for the data before the attribute value,
@@ -192,7 +198,7 @@ iterator rewriteHTML(const std::string& location, const Config& config,
      *          We need to return it because if we split an iterator, all others around and after it may be invalidated.
      *
      * */
-    auto handleTag = [&](const pair& tag) {
+    iterator handleTag(const pair& tag) {
         iterator tag_end = tag.second;
         // Get the tag name
         pair tag_name = getTagName(tag);
@@ -213,40 +219,49 @@ iterator rewriteHTML(const std::string& location, const Config& config,
             // So we'll search for the tag_end again
             tag_end = findTagEnd(nextNoChangeStart);
         return tag_end;
-    };
-
-    // The meat of the algorithm
-    iterator pos = start;
-    try {
-        while (pos != end) {
-            // Find the next tag
-            auto tag_start = std::find(pos, end, '<');
-            if (tag_start == end)
-                // There are no more tags, send all the data
-                throw Done{end};
-            auto next = tag_start;
-            if (++next == end)
-                // The tag is just before the end of the data, send everything before it
-                throw Done{tag_start};
-            if (*next == '/') {
-                // This is a closing tag, continue the search
-                pos = next;
-                continue;
-            }
-            auto tag_end = findTagEnd(next);
-            if (tag_end == end)
-                // We don't have the end of the tag, copy up to the start of it and break
-                throw Done{tag_start};
-            // We found a tag
-            pair tag{tag_start, tag_end};
-            pos = handleTag(tag);
-        }
-    } catch (Done e) {
-        // We can push out the nuchanged data now
-        assert(noChange);
-        return noChange(nextNoChangeStart, e.pos);
     }
-    return end;
+    iterator run() {
+        // The meat of the algorithm
+        iterator pos = start;
+        try {
+            while (pos != end) {
+                // Find the next tag
+                iterator tag_start = std::find(pos, end, '<');
+                if (tag_start == end)
+                    // There are no more tags, send all the data
+                    throw Done(end);
+                iterator next = tag_start;
+                if (++next == end)
+                    // The tag is just before the end of the data, send everything before it
+                    throw Done(tag_start);
+                if (*next == '/') {
+                    // This is a closing tag, continue the search
+                    pos = next;
+                    continue;
+                }
+                iterator tag_end = findTagEnd(next);
+                if (tag_end == end)
+                    // We don't have the end of the tag, copy up to the start of it and break
+                    throw Done(tag_start);
+                // We found a tag
+                pair tag(tag_start, tag_end);
+                pos = handleTag(tag);
+            }
+        } catch (Done e) {
+            // We can push out the nuchanged data now
+            return noChange(nextNoChangeStart, e.pos);
+        }
+        return end;
+    }
+};
+
+template <typename iterator, typename char_type, typename RangeEvent, typename DataEvent>
+iterator rewriteHTML(const std::string& location, const Config& config,
+                     iterator start, iterator end,
+                     RangeEvent noChange, DataEvent newData) 
+{
+    Rewriter<iterator, char_type, RangeEvent, DataEvent> rewriter(location, config, start, end, noChange, newData);
+    return rewriter.run();
 }
 
 }

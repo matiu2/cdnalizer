@@ -18,11 +18,7 @@ namespace cdnalizer {
  */
 template<typename iterator>
 struct pair : std::pair<iterator, iterator> {
-#ifdef HAVE_CPP11
-    using ParentClass = std::pair<iterator, iterator>;
-#else
     typedef std::pair<iterator, iterator> ParentClass;
-#endif
     pair() : ParentClass() {};
     pair(const pair& other) : ParentClass(other.first, other.second) {}
     pair(iterator first, iterator second) : ParentClass(first, second) {};
@@ -69,11 +65,7 @@ inline bool operator <(const std::string& a, const pair<iterator>& b) {
 /// Allows sorting and searching amongst a map of string-string pairs
 template<typename iterator>
 inline bool operator <(const std::pair<std::string, std::string>& a, const pair<iterator>& b) {
-#ifdef HAVE_CPP11
-        return std::lexicographical_compare( a.first.cbegin(), a.first.cend(), b.first, b.second);
-#else
-        return std::lexicographical_compare( a.first.begin(), a.first.end(), b.first, b.second);
-#endif
+    return std::lexicographical_compare( a.first.begin(), a.first.end(), b.first, b.second);
 }
 
 /// Allows comparing to a string, when the string is the lhs argument

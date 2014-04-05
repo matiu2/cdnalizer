@@ -10,12 +10,6 @@
 
 namespace cdnalizer {
 
-#ifdef HAVE_CPP11
-template<typename iterator>
-using RangeEvent = std::function<iterator(const iterator&, const iterator&)>; /// Used for events where start and end pointers signify a range in the input
-using DataEvent = std::function<void(std::string)>;               /// Used for events that generate new data
-#endif
-
 /** Rewrites links and references in HTML output to point to the CDN.
  *  For example /images/a.gif could become http://cdn.yoursite.com/images/a.gif
  *
@@ -37,17 +31,10 @@ using DataEvent = std::function<void(std::string)>;               /// Used for e
  *          if we were in the middle of a tag, we'll return the position of the '<',
  *          otherwise, it'll be the same as end.
  */
-#ifdef HAVE_CPP11
-template <typename iterator, typename char_type=char>
-iterator rewriteHTML(const std::string& location, const Config& config,
-                 iterator start, iterator end,
-                 RangeEvent<iterator> noChange, DataEvent newData);
-#else
 /// Used for events that generate new data
 template <typename iterator, typename char_type, typename RangeEvent, typename DataEvent>
 iterator rewriteHTML(const std::string& location, const Config& config,
                  iterator start, iterator end,
                  RangeEvent noChange, DataEvent newData);
-#endif
 
 }
