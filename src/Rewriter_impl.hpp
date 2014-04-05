@@ -1,5 +1,10 @@
-/// A C++03 implementation of Rewriter
 #pragma once
+/**
+ * A C++03 implementation of Rewriter
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ **/
 #include "Rewriter.hpp"
 
 #include "Config.hpp"

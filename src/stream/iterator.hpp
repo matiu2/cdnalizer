@@ -29,7 +29,10 @@
  *
  * ## When my_it++ (post decrement operator) is called
  *
- */
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ *
+ **/
 
 #include <istream>
 #include <vector>

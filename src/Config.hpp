@@ -1,6 +1,9 @@
 #pragma once
 /** Configuration Holder
  *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ *
  * # Config attributes
  *  * Tag Attrib:
  *    * img src

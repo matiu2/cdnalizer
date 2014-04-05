@@ -1,5 +1,10 @@
 #pragma once
-/// A class that behaves a bit like a string, but work off of long lived const char* data, and help avoid copying of data
+/**
+ * A class that behaves a bit like a string, but work off of long lived const char* data, and help avoid copying of data
+ *
+ * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * License: Apache License, Version 2.0 (See LICENSE.txt)
+ **/
 
 #include "utils.hpp"
 
