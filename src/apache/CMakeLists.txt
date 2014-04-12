@@ -11,11 +11,11 @@ if (STATIC_STDLIB_CXX)
     add_definitions(-static-libstdc++ -static-libgcc)
 endif()
 
-add_library(mod_cdnalizer SHARED mod_cdnalizer.cpp config.cpp filter.cpp)
-target_link_libraries(mod_cdnalizer base ${APR_LIBRARIES})
-set_target_properties(mod_cdnalizer PROPERTIES PREFIX "")
+add_library(${PROJECT_NAME} SHARED mod_cdnalizer.cpp config.cpp filter.cpp)
+target_link_libraries(${PROJECT_NAME} base ${APR_LIBRARIES})
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 
 INSTALL(
-    TARGETS mod_cdnalizer
-    DESTINATION ${MODULE_INSTALL_DIR}
+    TARGETS ${PROJECT_NAME}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cdnalizer/
 )

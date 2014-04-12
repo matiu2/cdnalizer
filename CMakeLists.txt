@@ -13,17 +13,6 @@ SET(VERSION 0.1)
 
 # Default to release build, as that's what most people use it for
 
-# Installation settings
-set(BUILD_DISTRO DEB
-    CACHE STRING "DEB or YUM - Debian/Ubuntu or centos. Currently only Ubuntu >= 13.10 is supported")
-if (BUILD_DEB STREQUAL "DEB")
-    set(MODULE_INSTALL_DIR "etc/apache2/mods-available")
-    set(MODULE_CONF_FILE "${MODULE_INSTALL_DIR}/mod_cdnalizer.conf")
-else()
-    set(MODULE_INSTALL_DIR "etc/httpd/modules")
-    set(MODULE_CONF_FILE "etc/httpd/conf/httpd.conf")
-endif()
-
 # Settings
 set(STATIC_STDLIB_CXX Off
     CACHE BOOL "Statically link stdlibc++ (for the actual mod_cdnalizer only) (works with g++ only)")
@@ -43,4 +32,4 @@ configure_file(dev-tools/apache/apache2.conf dev-tools/apache/apache2.conf)
 
 add_subdirectory(src)
 
-include(cmake/package.cmake)
+add_subdirectory(packages)

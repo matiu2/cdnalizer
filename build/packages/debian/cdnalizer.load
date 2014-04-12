@@ -1,0 +1,2 @@
+# Depends: filter
+LoadModule cdnalizer_module /usr/share/mod_cdnalizer.so
