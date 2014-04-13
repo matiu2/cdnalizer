@@ -13,12 +13,6 @@ SET(VERSION 0.1)
 
 # Default to release build, as that's what most people use it for
 
-# Settings
-set(STATIC_STDLIB_CXX Off
-    CACHE BOOL "Statically link stdlibc++ (for the actual mod_cdnalizer only) (works with g++ only)")
-set(USE_SYSTEM_APACHE On
-    CACHE BOOL "Find apache on your system, or use the embeded 2.2 headers")
-
 # APR - Apache Portable Runtime
 find_package(apr REQUIRED)
 # Apache - include files
