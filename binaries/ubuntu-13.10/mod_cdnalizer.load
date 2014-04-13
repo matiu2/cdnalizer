@@ -1,9 +1,0 @@
-<IfModule mod_filter.c>
-        LoadModule cdnalizer_module /usr/lib/apache2/modules/mod_cdnalizer.so
-        FilterDeclare cdnalizer CONTENT_SET
-        FilterProtocol cdnalizer change=yes;byteranges=yes
-        FilterProvider cdnalizer CDNALIZER "(%{CONTENT_TYPE} =~ /xml/i) || (%{CONTENT_TYPE} =~ /html/i)"
-        FilterChain +cdnalizer
-</IfModule>
-
-# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
