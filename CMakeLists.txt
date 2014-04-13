@@ -32,4 +32,4 @@ configure_file(dev-tools/apache/apache2.conf dev-tools/apache/apache2.conf)
 
 add_subdirectory(src)
 
-add_subdirectory(packages)
+include(cmake/package.cmake)

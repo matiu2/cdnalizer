@@ -1,3 +1,0 @@
-#!/bin/sh
-a2dismod mod_cdnalizer
-service apache2 reload

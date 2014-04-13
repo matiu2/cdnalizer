@@ -1,0 +1,3 @@
+#!/bin/sh
+a2dismod cdnalizer
+service apache2 status && service apache2 reload
