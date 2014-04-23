@@ -26,17 +26,17 @@
 $CDASH_ROOT_DIR = str_replace("\\", "/", dirname(dirname(__FILE__)));
 
 // Hostname of the database server
-$CDASH_DB_HOST = 'localhost';
+$CDASH_DB_HOST = getenv('DB_PORT_5432_TCP_ADDR');
 // Login for database access
 $CDASH_DB_LOGIN = 'cdash';
 // Port for the database (leave empty to use default)
-$CDASH_DB_PORT = '';
+$CDASH_DB_PORT = getenv('DB_PORT_5432_TCP_PORT');
 // Password for database access
 $CDASH_DB_PASS = 'cdash';
 // Name of the database
 $CDASH_DB_NAME = 'cdash';
 // Database type (empty means mysql)
-$CDASH_DB_TYPE = 'postgres';
+$CDASH_DB_TYPE = 'pgsql';
 // Turn this variable ON when CDash has been installed
 // Prevents from running the install.php again
 $CDASH_PRODUCTION_MODE = false;

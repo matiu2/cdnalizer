@@ -4,6 +4,7 @@
 FROM matiu/ubuntu:trusty
 MAINTAINER Matthew Sherborne <matt.sherborne@rackspace.com>
 RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y -q install postgresql-9.3 postgresql-client-9.3 postgresql-contrib-9.3
 
 # Run the rest of the commands as the ``postgres`` user created by the ``postgres-9.3`` package when it was ``apt-get installed``
