@@ -1,0 +1,8 @@
+#!/bin/sh
+ln -s ${CMAKE_INSTALL_PREFIX}/share/cdnalizer/mod_cdnalizer.so /etc/httpd/modules/
+service apache2 status && service apache2 reload
+echo "cdnalizer example usage (for Apache config):"
+echo ...
+echo "CDN_URL /images/ http://mycdn.supa.ws/images/"
+echo ...
+echo "This will rewrite outgoing HTML; eg. (<a href="/images/a.gif">a</a> => <a href="http://mycdn.supa.ws/images/a.gif">a</a>)"

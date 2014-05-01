@@ -1,0 +1,2 @@
+# Depends: filter
+LoadModule cdnalizer_module ${CMAKE_INSTALL_PREFIX}/share/cdnalizer/mod_cdnalizer.so
