@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project (cdnalizer)
 
-SET(VERSION 0.2)
+# 0.x versions are for Apache 2.2 and depend only on the pre c++11 c++ runtimes
+SET(VERSION 0.3)
 
 set(CMAKE_MODULE_PATH $CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(CheckCXXCompilerFlag)
