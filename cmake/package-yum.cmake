@@ -5,7 +5,7 @@ SET(CPACK_RPM_PACKAGE_LICENSE "ASL 2.0")
 set(YUM_DIR packages/redhat)
 
 file(COPY ${YUM_DIR}/01-cdnalizer.conf ${YUM_DIR}/postrm DESTINATION .)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cdnalizer.conf DESTINATION /etc/httpd/conf.modules.d/)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/01-cdnalizer.conf DESTINATION /etc/httpd/conf.modules.d/)
 
 configure_file(${YUM_DIR}/postinst postinst)
 SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE ${CMAKE_CURRENT_BINARY_DIR}/postinst )
