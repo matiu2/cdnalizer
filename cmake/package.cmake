@@ -7,9 +7,10 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Apache filter that rewrites outging HTML 
 SET(CPACK_PACKAGE_CONTACT "Matthew Sherborne <matt.sherborne@rackspace.com>")
 SET(CPACK_OUTPUT_FILE_PREFIX packages)
 
-#add_subdirectory(centos)
 if(PACKAGE_TO_BUILD STREQUAL DEB)
     include(cmake/package-deb.cmake)
+else()
+    include(cmake/package-yum.cmake)
 endif()
 
 INCLUDE(CPack)
