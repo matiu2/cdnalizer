@@ -10,7 +10,8 @@ include(cmake/get_bandit.cmake)
 
 add_definitions(-std=c++11 -Wall -Wextra)
 
-SET(VERSION 0.1)
+# 1.x versions are for Apache 2.4 and built with c++11
+SET(VERSION 1.3)
 
 # Default to release build, as that's what most people use it for
 

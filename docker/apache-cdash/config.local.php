@@ -30,7 +30,7 @@ $CDASH_DB_HOST = getenv('DB_PORT_5432_TCP_ADDR');
 // Login for database access
 $CDASH_DB_LOGIN = 'cdash';
 // Port for the database (leave empty to use default)
-$CDASH_DB_PORT = getenv('DB_PORT_5432_TCP_PORT');
+$CDASH_DB_PORT = intval(getenv('DB_PORT_5432_TCP_PORT'));
 // Password for database access
 $CDASH_DB_PASS = 'cdash';
 // Name of the database
@@ -39,7 +39,7 @@ $CDASH_DB_NAME = 'cdash';
 $CDASH_DB_TYPE = 'pgsql';
 // Turn this variable ON when CDash has been installed
 // Prevents from running the install.php again
-$CDASH_PRODUCTION_MODE = false;
+$CDASH_PRODUCTION_MODE = true;
 $CDASH_TESTING_MODE = false;
 $CDASH_TESTING_RENAME_LOGS = false;
 // Should we use asynchronous submission
@@ -48,9 +48,9 @@ $CDASH_ASYNCHRONOUS_SUBMISSION = false;
 $CDASH_MAININDEX_TITLE = 'CDash';
 $CDASH_MAININDEX_SUBTITLE = 'Projects';
 // Default from email
-$CDASH_EMAILADMIN = 'admin@cdash.org';
-$CDASH_EMAIL_FROM = 'admin@cdash.org';
-$CDASH_EMAIL_REPLY = 'noreply@cdash.org';
+$CDASH_EMAILADMIN = 'matt.sherborne@rackspace.com';
+$CDASH_EMAIL_FROM = 'matt.sherborne@rackspace.com';
+$CDASH_EMAIL_REPLY = 'matt.sherborne@rackspace.com';
 // Should CDash only register valid emails
 $CDASH_REGISTRATION_EMAIL_VERIFY = true;
 // Duration of the cookie session (in seconds)
