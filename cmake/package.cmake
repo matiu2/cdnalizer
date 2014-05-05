@@ -1,4 +1,4 @@
-set(PACKAGE_TO_BUILD NONE CACHE STRING "Type of package to build when we run 'make package': DEB, YUM, or NONE")
+set(PACKAGE_TO_BUILD NONE CACHE STRING "Type of package to build when we run 'make package': DEB, RPM, or NONE")
 SET(CPACK_GENERATOR "${PACKAGE_TO_BUILD}" CACHE INTERNAL "Don't set this, set PACKAGE_TO_BUILD" FORCE)
 
 SET(CPACK_PACKAGE_NAME "cdnalizer")
@@ -9,8 +9,8 @@ SET(CPACK_OUTPUT_FILE_PREFIX packages)
 
 if(PACKAGE_TO_BUILD STREQUAL DEB)
     include(cmake/package-deb.cmake)
-else()
-    include(cmake/package-yum.cmake)
+else() # Assume RPM
+    include(cmake/package-rpm.cmake)
 endif()
 
 INCLUDE(CPack)
