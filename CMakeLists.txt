@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project (cdnalizer)
 
+set(CTEST_USE_LAUNCHERS 1)
 include( CTest )
 enable_testing()
 

@@ -1,6 +1,5 @@
 set(CTEST_PROJECT_NAME "CDNalizer")
 
-set(CTEST_USE_LAUNCHERS 1)
 set(CTEST_DROP_METHOD "http")
 set(CTEST_DROP_SITE "162.242.225.50")
 #set(CTEST_DROP_SITE "www.cdash.org")
