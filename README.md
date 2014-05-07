@@ -20,6 +20,10 @@ The way I use it is:
 
 Comment out that `CDN_URL`, that'll pretty much instantly return things to normal.
 
+## Where can I get it ?
+
+Download a package from here: http://cdnalizer.supa.ws/
+
 ## How does it work ?
 
 It rewrites your HTML as it goes out, so your app generates: `<img src="/uploads/fun.png" />` and CDNalizer re-writes it on the fly to something like `<img src="http://mycdn.supa.ws/uploads/fun.png" />`
