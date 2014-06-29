@@ -1,5 +1,5 @@
 #!/bin/sh
-apachectl configtest && service httpd reload
+apachectl configtest && service apache2 reload
 echo "cdnalizer example usage (for Apache config):"
 echo ...
 echo "CDN_URL /images/ http://mycdn.supa.ws/images/"
