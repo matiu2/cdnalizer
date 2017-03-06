@@ -41,6 +41,7 @@ const Container default_tag_attrib {
         {"frame", "src"},
         {"iframe", "src"},
         {"img", "src"},
+        {"img", "srcset"},
         {"input", "src"},
         {"link", "href"},
         {"layer", "src"},

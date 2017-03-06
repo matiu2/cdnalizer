@@ -24,9 +24,11 @@ template <typename T1, typename T2>
 bool default_pred(T1 a, T2 b) { return a == b; }
 
 template <typename iter1, typename iter2,
-          typename value_type1=typename iter1::value_type, typename value_type2=typename iter2::value_type>
+          typename value_type1 = typename iter1::value_type,
+          typename value_type2 = typename iter2::value_type>
 bool equal(iter1 first1, iter1 last1, iter2 first2, iter2 last2) {
-    return equal(first1, last1, first2, last2, &default_pred<value_type1, value_type2>);
+  return utils::equal(first1, last1, first2, last2,
+                      &default_pred<value_type1, value_type2>);
 }
 
 /// @return first position where two ranges differ

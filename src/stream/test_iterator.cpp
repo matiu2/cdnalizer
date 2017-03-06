@@ -13,6 +13,7 @@
 #define TEST(name) = {"name", std::bind(this, &Tester::name)}
 
 using namespace bandit;
+using namespace snowhouse;
 using cdnalizer::stream::Iterator;
 
 go_bandit([](){

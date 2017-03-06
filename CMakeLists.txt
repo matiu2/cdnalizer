@@ -9,7 +9,7 @@ enable_testing()
 set(CMAKE_MODULE_PATH $CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(cmake/get_bandit.cmake)
 
-add_definitions(-std=c++11 -Wall -Wextra)
+add_definitions(-std=c++1z -Wall -Wextra)
 
 # 1.x versions are for Apache 2.4 and built with c++11
 SET(VERSION 1.4)

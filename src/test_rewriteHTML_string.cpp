@@ -15,6 +15,7 @@
 
 using namespace cdnalizer;
 using namespace bandit;
+using namespace snowhouse;
 
 go_bandit([](){
 

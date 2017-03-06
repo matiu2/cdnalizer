@@ -34,9 +34,10 @@ bool operator ==(const pair<string, string>& a, const pair<string, string> b) {
 
 }
 
-go_bandit([&](){
+go_bandit([](){
 
     using namespace bandit;
+    using namespace snowhouse;
     using namespace cdnalizer;
 
     Container map {{

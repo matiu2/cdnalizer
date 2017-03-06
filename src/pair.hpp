@@ -74,8 +74,8 @@ inline bool operator <(const std::pair<std::string, std::string>& a, const pair<
 }
 
 /// Allows comparing to a string, when the string is the lhs argument
-template<typename iterator>
-inline bool operator ==(const std::string& a, const pair<iterator>& b) { return b == a; }
-
-
+template <typename iterator>
+inline bool operator==(const std::string &a, const pair<iterator> &b) {
+  return b == a;
+}
 }

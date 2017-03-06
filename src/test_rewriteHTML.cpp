@@ -62,6 +62,7 @@ bool operator ==(const SequencedIteratorPair& lhs, const SequencedIteratorPair& 
 // Acutal tests
 #include <bandit/bandit.h>
 using namespace bandit;
+using namespace snowhouse;
 
 go_bandit([](){
 
