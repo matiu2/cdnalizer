@@ -50,7 +50,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // See if there's any work left over from last time
     apr_bucket_brigade* leftover_work = static_cast<apr_bucket_brigade*>(filter->ctx);
     if (leftover_work && !APR_BRIGADE_EMPTY(leftover_work)) {
-        // Get left over work from last time ?
+        // Move the leftover bucket to our new brigade
         apr_bucket* leftover_bucket = APR_BRIGADE_FIRST(leftover_work);
         APR_BUCKET_REMOVE(leftover_bucket);
         APR_BRIGADE_INSERT_HEAD(bb, leftover_bucket);
@@ -87,13 +87,15 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     }
 
     // Called when we find a range of unchanged data
-    std::function<Iterator(const Iterator&, const Iterator&)> onUnchangedData = [&](const Iterator& start, const Iterator& end) {
-        // Move buckets from start up to the current into our completed_work brigade
-        return moveBuckets(start, end, completed_work);
+    RangeEvent<Iterator> onUnchangedData = [&](const Iterator &start,
+                                               const Iterator &end) {
+      // Move buckets from start up to the current into our completed_work
+      // brigade
+      return moveBuckets(start, end, completed_work);
     };
 
     // Called when new data to push out the filter arrives
-    auto newData = [&](const std::string& data) {
+    DataEvent newData = [&](const std::string& data) {
         // Create a new bucket to append to completed work
         // Copy the data to it. Needs to be copied because it's coming from a data dict, that will dissapear when the filter does.
         apr_bucket* bucket = apr_bucket_heap_create(data.c_str(), data.size(), NULL, filter->c->bucket_alloc);
@@ -115,7 +117,8 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         hostname << ':' << port;
 
     // Do the actual rewriting now
-    Iterator tag_start = rewriteHTML(hostname.str(), location, *config, beginning, end, onUnchangedData, newData);
+    Iterator tag_start = rewriteHTML(hostname.str(), location, *config,
+                                     beginning, end, onUnchangedData, newData);
 
     // Store any left over data for next time
     if (tag_start != end) {

@@ -11,8 +11,9 @@ include(cmake/get_bandit.cmake)
 
 add_definitions(-std=c++1z -Wall -Wextra)
 
-# 1.x versions are for Apache 2.4 and built with c++11
-SET(VERSION 1.4)
+# 1.4 is for Apache 2.4 and built with c++11
+# 1.5 is for Apache 2.4 and built with c++14 - it does a straight search and replace, instead of looking for tags
+SET(VERSION 1.5)
 
 # Default to release build, as that's what most people use it for
 

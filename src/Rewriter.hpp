@@ -13,9 +13,12 @@
 
 namespace cdnalizer {
 
-template<typename iterator>
-using RangeEvent = std::function<iterator(const iterator&, const iterator&)>; /// Used for events where start and end pointers signify a range in the input
-using DataEvent = std::function<void(std::string)>;               /// Used for events that generate new data
+/// Used for events where start and end pointers signify a range in the input
+template <typename iterator>
+using RangeEvent = std::function<iterator(const iterator &, const iterator &)>;
+
+/// Used for events that generate new data
+using DataEvent = std::function<void(std::string)>;
 
 /** Rewrites links and references in HTML output to point to the CDN.
  *  For example /images/a.gif could become http://cdn.yoursite.com/images/a.gif

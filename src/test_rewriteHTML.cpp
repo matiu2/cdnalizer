@@ -71,17 +71,22 @@ go_bandit([](){
     std::vector<SequencedNewData> new_blocks;
     std::string location = "/blog";
 
+    std::stringstream log;
+
     cdnalizer::Config cfg{
         {{"/images", "http://cdn.supa.ws/imgs"}}
     };
 
     RangeEvent<Iterator> unchanged = [&](Iterator start, Iterator end) {
         unchanged_blocks.push_back(SequencedIteratorPair{sequence++, start, end});
+        std::string out(start, end);
+        log << "Unchanged: " << out << '\n';
         return end;
     };
 
     DataEvent newData = [&](std::string data) {
         new_blocks.push_back(SequencedNewData(sequence++, data));
+        log << "New data: " << data << '\n';
     };
 
     auto doRewrite = [&](std::string::const_iterator start, const Iterator& end, const Config& cfg) {
@@ -97,6 +102,7 @@ go_bandit([](){
     // Returns true if nothing is changed after running doRewrite
     auto ensureNoChange = [&](const std::string& data) {
         Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
+        std::cout << "Log: " << log.str() << std::endl;
         AssertThat(end, Is().EqualTo(data.cend()));
         AssertThat(unchanged_blocks, HasLength(1));
         auto block = unchanged_blocks.at(0);
@@ -117,17 +123,12 @@ go_bandit([](){
             ensureNoChange(data);
         });
 
-        it("3. Ignores attributes we don't care about", [&](){
-            const std::string data{R"**(<a src="/images/a.gif"><img href="/images/bad.link" />bad attribute name</a>)**"};
+        it("3. Ignores sligthly wrong paths we don't care about", [&](){
+            const std::string data{R"**(<a src="../images/a.gif"><img href="/home/images/bad.link" />some link</a>)**"};
             ensureNoChange(data);
         });
 
-        it("4. Ignores an attribute we care about, but has the wrong value ", [&](){
-            const std::string data{R"**(<a href="/not/images/a.gif"><img href="/images/bad.link" />bad attribute name</a>)**"};
-            ensureNoChange(data);
-        });
-
-        it("5. Ignores when location breaks our match", [&](){
+        it("4. Ignores when location breaks our match", [&](){
             const std::string data{R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
             cfg.addPath("/blog2/images", "http://cdn.supa.ws/blog2/imags");
             Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);

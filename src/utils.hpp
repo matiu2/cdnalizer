@@ -31,12 +31,23 @@ bool equal(iter1 first1, iter1 last1, iter2 first2, iter2 last2) {
                       &default_pred<value_type1, value_type2>);
 }
 
-/// @return first position where two ranges differ
+/// @return a pair of iterators:
+///         (1st input string location that doesn't match 2nd,
+///          2nd input string location that doesn't match 1st)
+/// If nothing matches, it'll return (first1, first2),
+/// If everything matches, it'll return (last1, last2),
+/// If 1st matches the start of 2nd, it'll return
+///             (last1, first2 + distance(first1, last1)),
+/// If 2nd matches the start of 1nd, it'll return
+///       (first1 + distance(first2, last2, last2),
 template <typename iter1, typename iter2>
-std::pair<iter1, iter2> mismatch(iter1 first1, iter1 last1, iter2 first2, iter2 last2) {
-    while ( (first1!=last1) && (first2!=last2) && (*first1==*first2) )
-        { ++first1; ++first2; }
-    return std::make_pair(first1,first2);
+std::pair<iter1, iter2> mismatch(iter1 first1, iter1 last1, iter2 first2,
+                                 iter2 last2) {
+  while ((first1 != last1) && (first2 != last2) && (*first1 == *first2)) {
+    ++first1;
+    ++first2;
+  }
+  return std::make_pair(first1, first2);
 }
 
 /// @return first position where two ranges differ
