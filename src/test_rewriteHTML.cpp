@@ -149,7 +149,7 @@ go_bandit([](){
             AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin()+40, data.cend()}));
         });
 
-        it("6. Works out location correctly", [&](){
+        it("5. Works out location correctly", [&](){
             const std::string data{R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
 
             // location is '/blog/', so 'images/a.gif' should be interpreted as '/blog/images/a.gif'
@@ -181,6 +181,46 @@ go_bandit([](){
             AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin()+40, data.cend()}));
         });
 
+        it("6. Works out location with an extra slash correctly", [&]() {
+          const std::string data{
+              R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
+
+          location = "/blog/";
+           
+          // location is '/blog/', so 'images/a.gif' should be interpreted as
+          // '/blog/images/a.gif'
+          cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
+          Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
+          AssertThat(end, Is().EqualTo(data.cend()));
+          AssertThat(unchanged_blocks, HasLength(3));
+
+          // Unchanged: "<a href="
+          auto block = unchanged_blocks.at(0);
+          AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                         data.cbegin() + 9}));
+
+          // New Data: "http://cdn.supa.ws/blog/imags"
+          AssertThat(new_blocks, HasLength(2));
+          SequencedNewData new_block = new_blocks.at(0);
+          AssertThat(new_block, Equals(SequencedNewData{
+                                    2, "http://cdn.supa.ws/blog/imags"}));
+
+          // Unchanged: '/a.gif"><img src='
+          block = unchanged_blocks.at(1);
+          AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 15,
+                                                         data.cbegin() + 33}));
+
+          // New Data: "http://cdn.supa.ws/imgs"
+          new_block = new_blocks.at(1);
+          SequencedNewData expected =
+              SequencedNewData{4, "http://cdn.supa.ws/imgs"};
+          AssertThat(new_block, Equals(expected));
+
+          // Unchanged: '/bad.link" />Bad location</a>'
+          block = unchanged_blocks.at(2);
+          AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 40,
+                                                         data.cend()}));
+        });
     });
 });
 

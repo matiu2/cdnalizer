@@ -120,7 +120,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       // so we take away len('/blog') which is our location + 1
       // for the slash
       skipOverCount -= location.size();
-      --skipOverCount;
+      if (location.back() != '/')
+        --skipOverCount;
       return canonical;
     };
 
