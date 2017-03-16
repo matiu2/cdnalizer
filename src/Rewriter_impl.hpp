@@ -194,7 +194,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     }
   };
 
-  auto find_quote = [&](iterator start, auto predicate) {
+  auto find_quote = [&](iterator start,
+                        std::function<bool(decltype(*start))> predicate) {
     // Find a quotes start and end
     auto result = std::find_if(start, end, predicate);
     // If there are no more tags, send all the data
@@ -209,7 +210,10 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     while (pos != end) {
       auto quote_start =
           find_quote(pos, [](char c) { return (c == '\'') || (c == '"'); });
-      auto pred = [d = *quote_start](auto c) { return (c == d); };
+      auto d = *quote_start;
+      auto pred = [d](decltype(*quote_start) c) {
+        return (c == d);
+      };
       auto quote_end = find_quote(++quote_start, pred);
       handlePath(pair{quote_start, quote_end});
       pos = quote_end;
