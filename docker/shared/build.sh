@@ -3,5 +3,7 @@ cd /cdnalizer
 git pull
 cd build
 cmake ..
-make -j4
-ctest -D Nightly
+make
+ctest
+make package
+aws s3 cp $PACKAGE s3://cdnalizer-packages/${DEST}/
