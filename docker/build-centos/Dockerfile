@@ -14,7 +14,7 @@ RUN cmake .. # For some reason running it a second time makes it find the Apache
 RUN make
 RUN make package 
 WORKDIR /
-ADD ../shared/build.sh build.sh
-CMD easy_install pip
-CMD pip install awscli
-CMD PACKAGE=packgaes/*rpm DEST=centos /build.sh
+ADD build.sh build.sh
+RUN /usr/bin/easy_install pip 
+RUN /usr/bin/pip install awscli
+CMD /build.sh && aws s3 cp cdnalizer/build/packages/*rpm s3://cdnalizer-packages/centos/
