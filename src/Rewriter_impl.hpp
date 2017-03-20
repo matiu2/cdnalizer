@@ -12,14 +12,44 @@
 #include <cctype>   // tolower
 #include <iterator> // find search
 
+#include <boost/spirit/home/x3.hpp>
+
 namespace cdnalizer {
 
-template <typename iterator, typename char_type>
+namespace parser {
+
+using namespace boost::spirit::x3;
+
+auto css_path = lit('(') >> +(char_ - (lit(')') | eoi)) >> ')';
+auto tag_start = lexeme[lit('<') >> alpha];
+auto attrib_no_quotes = lexeme[lit('=') >> raw[+(char_ - (space | '>' | eoi))]];
+auto attrib_double_quotes = lit('=') >> lit('"') >> raw[+(char_ - (lit('"') | eoi))] >> '"';
+auto attrib_single_quotes = lit('=') >> lit('\'') >> raw[+(char_ - (lit('\'') | eoi))] >> '\'';
+auto inner_tag_junk = *(char_ - (eoi | '=' | '>'));
+auto attribute = (attrib_double_quotes | attrib_no_quotes | attrib_single_quotes);
+auto tag = tag_start >> +(inner_tag_junk >> attribute >> inner_tag_junk) >> '>';
+
+/// Returns a lambda that will grab an iterator range into a path
+auto grabRange = [](auto &range) {
+  using namespace boost::spirit::x3;
+  return [&range](auto &ctx) { range = _where(ctx); };
+};
+
+/// Returns a lambda that will grab iterator ranges into a vector of iterator ranges
+auto grabRanges = [](auto &ranges, size_t& index) {
+  using namespace boost::spirit::x3;
+  return [&ranges, &index](auto &ctx) { 
+    auto x = decltype(_where(ctx))::x;
+    ranges[index++] = _where(ctx); };
+};
+
+} /* parser  */
+
+template <typename iterator>
 iterator rewriteHTML(const std::string &server_url, const std::string &location,
                      const Config &config, iterator start, iterator end,
-                     RangeEvent<iterator> noChange, DataEvent newData) {
-  using pair = cdnalizer::pair<iterator>;
-
+                     RangeEvent<iterator> noChange, DataEvent newData,
+                     bool isCSS) {
   /// An exception we throw when we have finished parsing the input, and catch
   /// in the main loop.
   struct Done {
@@ -29,15 +59,12 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
 
   iterator nextNoChangeStart = start;
 
-  /** Returns true if 'path' is relative.
-   *
-   * ie. if it doesn't start with '/', 'http://', or 'https://'
-   *
-   * @param path We'll check if this is relative, or ablosute
-   * @return true of 'path' is relative or empty
-   **/
-  auto is_relative = [](const pair &path) {
-    return utils::is_relative(path.first, path.second);
+  const std::string empty;
+
+  struct Change {
+    boost::iterator_range<iterator> path;
+    size_t howMuchToCut;
+    const std::string &newData;
   };
 
   /** Takes the start and end of the path value generated and emits
@@ -50,7 +77,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
    * @returns true if all iterators after path start need recalculating
    *
    */
-  auto handlePath = [&](const pair &path_range) {
+  auto handlePath = [&](boost::iterator_range<iterator> path_range) -> Change {
     // Work out the path value we'll search the config DB for
     // range.begin() is the character after the first "quote"
     // range.end() is the last quote
@@ -111,7 +138,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       std::string canonical(location);
       if (location.back() != '/')
         canonical.push_back('/');
-      std::copy(path_range.first, path_range.second,
+      std::copy(path_range.begin(), path_range.end(),
                 std::back_inserter(canonical));
       // The written url will be 'images/x', but canonical will be
       // '/blog/images/x'
@@ -131,21 +158,22 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
         // TODO: In reality there may be several server_url aliases; we should
         // probably check all of them here
         auto match = utils::mismatch(server_url.cbegin(), server_url.cend(),
-                                     path_range.first, path_range.second);
+                                     path_range.begin(), path_range.end());
         if (match.first == server_url.cend()) {
           // Also we want to skip over the extra length of that url in the
           // incoming data
           skipOverCount += server_url.length();
-          return std::string(match.second, path_range.second);
+          return std::string(match.second, path_range.end());
         }
       }
       // No changes needed; copy the whole path as is
-      return std::string(path_range.first, path_range.second);
+      return std::string(path_range.begin(), path_range.end());
     };
 
-    std::string canonical(is_relative(path_range)
-                              ? canonicalFromRelativePath()
-                              : canonicalFromAbsolutePath());
+    std::string canonical(
+        utils::is_relative(path_range.begin(), path_range.end())
+            ? canonicalFromRelativePath()
+            : canonicalFromAbsolutePath());
 
     // Now we know what to search for in our map
     // eg. canonical='/images/fun.gif'
@@ -155,7 +183,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     // 'found' will be like {"/images/", "http://cdn.supa.ws/images/"}
     auto found(config.findCDNUrl(canonical));
     if (found.first.empty() && found.second.empty()) {
-      return path_range.second;
+      // We found nothing
+      return {{}, 0, empty};
     }
 
     skipOverCount += found.first.size();
@@ -163,62 +192,104 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     const std::string &base_path = found.first;
     const std::string &cdn_url = found.second;
 
-    // If canonical starts with base_path replace it with cdn_url
-    if ((canonical.length() > base_path.length()) &&
-        (std::equal(base_path.cbegin(), base_path.cend(), canonical.begin()))) {
+    // We have three possible situations here:
+    // 1. * path_range = "/images/x.jpg"
+    //    * base_path = "/images/"
+    //    * canonical = "/images/"
+    //    * cdn_url = "http://cdn.supa.ws/images/"
+    // 2. * path_range = "http://www.supa.ws/images/x.jpg"
+    //    * base_path = "/images/"
+    //    * canonical = "/images/x.jpg"
+    //    * cdn_url = "http://cdn.supa.ws/images/"
+    // 3. * path_range = "../images/x.jpg"
+    //    * base_path = "/images/"
+    //    * canonical = "/images/x.jpg"
+    //    * cdn_url = "http://cdn.supa.ws/images/"
 
-      // Make sure we got given actual event handlers
-      assert(noChange);
-      assert(newData);
+    size_t howMuchToCut = std::distance(path_range.begin(), path_range.end()) -
+                          (canonical.size() - base_path.size());
 
-      // Output everything before the start of this path  as unchanged
-      nextNoChangeStart = noChange(nextNoChangeStart, path_range.first);
-
-      // At this point **all iterators** apart from nextNoChangeStart may be
-      // **corrupt and useless** and should not be used.
-      // This is because the noChange callback may split the bucket and
-      // alter the bucket brigade
-
-      // Send the new data (which is the new cdn url)
-      newData(cdn_url);
-
-      // Skip over the parts of the path that we replaced.
-      std::advance(nextNoChangeStart, skipOverCount);
-
-      // Avoid "//" in output
-      if ((!cdn_url.empty()) && (cdn_url.back() == '/') && (*nextNoChangeStart == '/'))
-        ++nextNoChangeStart;
-      return nextNoChangeStart;
-    } else {
-      return path_range.second;
-    }
+    return {path_range, howMuchToCut, cdn_url};
   };
 
-  auto find_quote = [&](iterator start,
-                        std::function<bool(decltype(*start))> predicate) {
-    // Find a quotes start and end
-    auto result = std::find_if(start, end, predicate);
-    // If there are no more tags, send all the data
-    if (result == end)
-      throw Done{end};
-    return result;
+  auto operateOnBuckets = [&](const Change &change) {
+    // Make sure we got given actual event handlers
+    assert(noChange);
+    assert(newData);
+
+    if (change.path.empty())
+      return;
+
+    // Output everything before the start of this path  as unchanged
+    nextNoChangeStart = noChange(nextNoChangeStart, change.path.begin());
+
+    // At this point **all iterators** apart from nextNoChangeStart may be
+    // **corrupt and useless** and should not be used.
+    // This is because the noChange callback may split the bucket and
+    // alter the bucket brigade
+
+    // Send the new data (which is the new cdn url)
+    newData(change.newData);
+
+    // Skip over the parts of the path that we replaced.
+    std::advance(nextNoChangeStart, change.howMuchToCut);
+
+    // Avoid "//" in output
+    if ((!change.newData.empty()) && (change.newData.back() == '/') &&
+        (*nextNoChangeStart == '/'))
+      ++nextNoChangeStart;
   };
 
   // Find a path to replace in the html/css
   iterator pos = start;
   try {
-    while (pos != end) {
-      auto quote_start =
-          find_quote(pos, [](char c) { return (c == '\'') || (c == '"'); });
-      auto d = *quote_start;
-      auto pred = [d](decltype(*quote_start) c) {
-        return (c == d);
-      };
-      auto quote_end = find_quote(++quote_start, pred);
-      handlePath(pair{quote_start, quote_end});
-      pos = quote_end;
-      ++pos;
+    // See if we're looking for css urls or html/xml
+    if (isCSS) {
+      while (pos != end) {
+        boost::iterator_range<iterator> path;
+        bool ok = parser::phrase_parse(
+            pos, end, parser::css_path[parser::grabRange(path)], parser::space);
+        if (ok) {
+          Change change(handlePath({path.begin(), path.end()}));
+          operateOnBuckets(change);
+        }
+      }
+    } else {
+      while (pos != end) {
+        std::vector<boost::iterator_range<iterator>> paths;
+        size_t index = 0;
+        bool ok = parser::phrase_parse(
+            pos, end, parser::tag[parser::grabRanges(paths, index)],
+            parser::space);
+        if ((ok) && (!paths.empty())) {
+          std::vector<Change> changes;
+          changes.reserve(paths.size());
+          std::transform(paths.begin(), paths.end(), handlePath,
+                         std::back_inserter(changes));
+          if (changes.size() != 0) {
+            std::string newTagInnards;
+            Change finalChange{
+                {changes.front().path.begin(), changes.back().path.end()},
+                0,
+                newTagInnards};
+            iterator copyFrom = end;
+            auto out = std::back_inserter(newTagInnards);
+            for (const Change& change : changes) {
+              if (change.path.empty())
+                continue;
+              if (copyFrom != end)
+                std::copy(copyFrom, change.path.begin(), out);
+              iterator start = change.path.begin();
+              std::advance(start, change.howMuchToCut);
+              std::copy(start, change.path.end(), out);
+              copyFrom = change.path.end();
+            }
+            operateOnBuckets(finalChange);
+          }
+        }
+      }
     }
+
   } catch (Done e) {
     // We can push out the unchanged data now
     assert(noChange);

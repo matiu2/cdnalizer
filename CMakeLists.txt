@@ -9,10 +9,10 @@ enable_testing()
 set(CMAKE_MODULE_PATH $CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(cmake/get_bandit.cmake)
 
-add_definitions(-std=c++11 -Wall -Wextra)
+add_definitions(-std=c++14 -Wall -Wextra)
 
 # 1.4 is for Apache 2.4 and built with c++11
-# 1.5 is for Apache 2.4 and built with c++14 - it does a straight search and replace, instead of looking for tags
+# 1.5 is for Apache 2.4 and built with c++14
 SET(VERSION 1.5)
 
 # Default to release build, as that's what most people use it for

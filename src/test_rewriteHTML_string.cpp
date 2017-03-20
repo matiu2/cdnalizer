@@ -39,7 +39,7 @@ go_bandit([]() {
   using namespace std::placeholders;
   auto doRewrite = [&](const std::string &input) {
     return cdnalizer::rewriteHTML(server, location, cfg, input.cbegin(),
-                                  input.cend(), unchanged, newData);
+                                  input.cend(), unchanged, newData, false);
   };
 
   before_each([&]() { output.clear(); });
