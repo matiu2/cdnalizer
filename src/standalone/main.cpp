@@ -20,7 +20,6 @@ int main(int, char**) {
     //  TODO: Make a buffered, copyable, re-useable istream iterator
     std::fstream f("data.tmp");
     
-
-    cdnalizer::stream::rewriteHTML("", cfg, std::cin, std::cout);
+    cdnalizer::stream::rewriteHTML("", cfg, std::cin, std::cout, false);
     std::cout.flush();
 }

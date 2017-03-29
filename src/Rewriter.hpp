@@ -41,14 +41,15 @@ using DataEvent = std::function<void(std::string)>;
  *                 Example usage: myRewriter.onNoChange = [](const char* a, const char* b) { passInputThroughToOutput(a, b); }
  *                 See whe rewriteHTML function for a more concrete example.
  * @param newData  Event fired when new data for the output stream has been generated
+ * @param isCSS    This is a css file
  * @returns The place where we reading when we hit @a end - at the time of writing
  *          if we were in the middle of a tag, we'll return the position of the '<',
  *          otherwise, it'll be the same as end.
  */
-template <typename iterator, typename char_type=char>
-iterator rewriteHTML(const std::string& server_url, const std::string& location,
-                     const Config& config, iterator start, iterator end,
-                     RangeEvent<iterator> noChange, DataEvent newData);
+template <typename iterator>
+iterator rewriteHTML(const std::string &server_url, const std::string &location,
+                     const Config &config, iterator start, iterator end,
+                     RangeEvent<iterator> noChange, DataEvent newData, bool isCSS);
 
 /** Rewrites links and references in HTML output to point to the CDN.
  *  For example /images/a.gif could become http://cdn.yoursite.com/images/a.gif
@@ -67,15 +68,17 @@ iterator rewriteHTML(const std::string& server_url, const std::string& location,
  *                 Example usage: myRewriter.onNoChange = [](const char* a, const char* b) { passInputThroughToOutput(a, b); }
  *                 See whe rewriteHTML function for a more concrete example.
  * @param newData  Event fired when new data for the output stream has been generated
+ * @param isCSS    This is a css file
  * @returns The place where we reading when we hit @a end - at the time of writing
  *          if we were in the middle of a tag, we'll return the position of the '<',
  *          otherwise, it'll be the same as end.
  */
-template <typename iterator, typename char_type=char>
+template <typename iterator>
 inline iterator rewriteHTML(const std::string& location,
                      const Config& config, iterator start, iterator end,
-                     RangeEvent<iterator> noChange, DataEvent newData) {
-    return rewriteHTML<iterator, char_type>("", location, config, start, end, noChange, newData);
+                     RangeEvent<iterator> noChange, DataEvent newData, bool isCSS) {
+  return rewriteHTML("", location, config, start, end, noChange, newData,
+                     isCSS);
 }
 
 }

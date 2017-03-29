@@ -21,11 +21,9 @@ namespace stream {
  * @param config   The configuration object to use
  * @param html     All the html content in one block that we will be converting
  * @param output   The output stream that new html will be written to
+ * @param isCSS    is the input css (as apposed to html)
  */
-void rewriteHTML(const std::string& location,
-                 const Config& config,
-                 std::istream& html,
-                 std::ostream& output);
-
+void rewriteHTML(const std::string &location, const Config &config,
+                 std::istream &html, std::ostream &output, bool isCSS);
 }
 }

@@ -102,8 +102,8 @@ public:
 };
 
 // Forward iterator working on Apache bucket Brigades
-struct Iterator : AbstractBlockIterator<const char*, BucketWrapper, const char>  {
-    using Base = AbstractBlockIterator<const char*, BucketWrapper, const char>;
+struct Iterator : AbstractBlockIterator<const char*, BucketWrapper>  {
+    using Base = AbstractBlockIterator<const char*, BucketWrapper>;
     Iterator() = default;
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : AbstractBlockIterator({bb, onFlush, bucket}, position) {}
     Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}

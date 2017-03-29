@@ -96,7 +96,7 @@ public:
     BaseIterator(char_type value) : value(value) {}
     /// Represents the end of a stream
     BaseIterator() {}
-    char_type operator *() { return value; }
+    char_type& operator *() { return value; }
     char_type* operator ->() { return &value; }
     type& operator ++() {
         assert(stream); // Can't be called on read and throw away versions
@@ -143,8 +143,6 @@ public:
     }
 };
 
-
-using Iterator=BaseIterator<char>;
-
+using Iterator = BaseIterator<char>;
 }
 }

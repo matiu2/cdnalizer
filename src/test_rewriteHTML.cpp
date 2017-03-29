@@ -2,9 +2,9 @@
  * Tests RewriteHTML at a low level. 
  * Ensure's events are triggered correctly and that blocks are processed correctly.
  **/
+#include "Config.hpp"
 #include "Rewriter.hpp"
 #include "Rewriter_impl.hpp"
-#include "Config.hpp"
 
 #include <ostream>
 
@@ -18,6 +18,47 @@ struct SequencedIteratorPair {
     Iterator end;
 };
 using SequencedNewData = std::pair<int, std::string>;
+
+/*
+std::__1::__wrap_iter<char const *>
+cdnalizer::rewriteHTML<std::__1::__wrap_iter<char const *>, char>(
+    std::__1::basic_string<char, std::__1::char_traits<char>,
+                           std::__1::allocator<char>> const &,
+    std::__1::basic_string<char, std::__1::char_traits<char>,
+                           std::__1::allocator<char>> const &,
+    cdnalizer::Config const &, std::__1::__wrap_iter<char const *>,
+    std::__1::__wrap_iter<char const *>,
+    std::__1::function<std::__1::__wrap_iter<char const *>(
+        std::__1::__wrap_iter<char const *> const &,
+        std::__1::__wrap_iter<char const *> const &)>,
+    std::__1::function<
+        void(std::__1::basic_string<char, std::__1::char_traits<char>,
+                                    std::__1::allocator<char>>)>)
+                                    */
+
+namespace cdnalizer
+{
+// 26 /home/ubuntu/projects/cdnalizer/src/Rewriter.hpp:78:
+// undefined reference to
+//
+
+/*
+    std::__1::basic_string<char, std::__1::char_traits<char>,
+                           std::__1::allocator<char>> const &,
+    std::__1::basic_string<char, std::__1::char_t raits<char>,
+                           std::__1::allocator<char>> const &,
+    cdnalizer::Config const &, std::__1::__wrap_iter<char const *>,
+    std::__1::__wrap_iter<char const *>,
+    std::__1::function<std::__1::__wrap_iter<char const *>(
+        std::__1::__wrap_iter<char const *> const &,
+        std::__1::__wrap_iter<char const *> const &)>,
+    std::__1::function<
+        void(std::__1::basic_string<char, std::__1::char_traits<char>,
+                                    std::__1::allocator<char>>)>)'    
+*/
+
+  
+} /* cdnalizer */ 
 
 // Nice ways to print some of the types we're working with
 
@@ -69,7 +110,7 @@ go_bandit([](){
     size_t sequence;
     std::vector<SequencedIteratorPair> unchanged_blocks;
     std::vector<SequencedNewData> new_blocks;
-    std::string location = "/blog";
+    std::string location("/blog");
 
     std::stringstream log;
 
@@ -89,8 +130,10 @@ go_bandit([](){
         log << "New data: " << data << '\n';
     };
 
-    auto doRewrite = [&](std::string::const_iterator start, const Iterator& end, const Config& cfg) {
-        return cdnalizer::rewriteHTML<Iterator>(location, cfg, start, end, unchanged, newData);
+    auto doRewrite = [&](Iterator start, const Iterator &end, const Config &cfg,
+                         bool isCSS) {
+      return cdnalizer::rewriteHTML(location, cfg, start, end, unchanged,
+                                    newData, isCSS);
     };
 
     before_each([&]() {
@@ -100,15 +143,15 @@ go_bandit([](){
     });
 
     // Returns true if nothing is changed after running doRewrite
-    auto ensureNoChange = [&](const std::string& data) {
-        Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
-        std::cout << "Log: " << log.str() << std::endl;
-        AssertThat(end, Is().EqualTo(data.cend()));
-        AssertThat(unchanged_blocks, HasLength(1));
-        auto block = unchanged_blocks.at(0);
-        AssertThat(block.sequence, Equals((size_t)1));
-        AssertThat(block.start, Is().EqualTo(data.cbegin()));
-        AssertThat(block.end, Is().EqualTo(data.cend()));
+    auto ensureNoChange = [&](const std::string &data, bool isCSS = false) {
+      Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, isCSS);
+      std::cout << "Log: " << log.str() << std::endl;
+      AssertThat(end, Is().EqualTo(data.cend()));
+      AssertThat(unchanged_blocks, HasLength(1));
+      auto block = unchanged_blocks.at(0);
+      AssertThat(block.sequence, Equals((size_t)1));
+      AssertThat(block.start, Is().EqualTo(data.cbegin()));
+      AssertThat(block.end, Is().EqualTo(data.cend()));
     };
 
     describe("Low level Rewrite HTML", [&](){
@@ -131,7 +174,7 @@ go_bandit([](){
         it("4. Ignores when location breaks our match", [&](){
             const std::string data{R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
             cfg.addPath("/blog2/images", "http://cdn.supa.ws/blog2/imags");
-            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
+            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
             AssertThat(end, Is().EqualTo(data.cend()));
             AssertThat(unchanged_blocks, HasLength(2));
 
@@ -154,7 +197,7 @@ go_bandit([](){
 
             // location is '/blog/', so 'images/a.gif' should be interpreted as '/blog/images/a.gif'
             cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
-            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
+            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
             AssertThat(end, Is().EqualTo(data.cend()));
             AssertThat(unchanged_blocks, HasLength(3));
 
@@ -190,7 +233,7 @@ go_bandit([](){
           // location is '/blog/', so 'images/a.gif' should be interpreted as
           // '/blog/images/a.gif'
           cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
-          Iterator end = doRewrite(data.cbegin(), data.cend(), cfg);
+          Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
           AssertThat(end, Is().EqualTo(data.cend()));
           AssertThat(unchanged_blocks, HasLength(3));
 

@@ -8,7 +8,6 @@
 
 #include <iterator>
 
-
 namespace cdnalizer {
 namespace apache {
 
@@ -22,45 +21,48 @@ namespace apache {
  *  * bool == // Is this block == to the next block..
  *
  */
-template <typename SubIterator, typename Block, typename CharType=typename SubIterator::value_type>
-struct AbstractBlockIterator : public std::iterator<std::forward_iterator_tag, char> {
-    using parent_type=std::iterator<std::forward_iterator_tag, char>;
-    using type=AbstractBlockIterator<SubIterator, Block, CharType>;
-    using value_type=CharType;
+template <typename SubIterator, typename Block>
+struct AbstractBlockIterator
+    : public std::iterator<std::forward_iterator_tag, char> {
+  using parent_type = std::iterator<std::forward_iterator_tag, char>;
+  using type = AbstractBlockIterator<SubIterator, Block>;
+  using value_type = typename std::iterator_traits<SubIterator>::value_type;
+  using reference = typename std::iterator_traits<SubIterator>::reference;
 
-    Block block;
-    SubIterator position;
+  Block block;
+  SubIterator position;
 
-    AbstractBlockIterator() = default;
-    AbstractBlockIterator(const Block& block, SubIterator position={}) : parent_type{}, block{block}, position{position ?  position : block.begin()} {}
-    AbstractBlockIterator(const type& other) = default;
-    type& operator =(const type& other) = default;
-    value_type operator *() const { return *position; }
-    value_type& operator *() { return *position; }
-    value_type operator ->() const { return *position; }
-    value_type& operator ->() { return *position; }
-    type& operator++() {
-        ++position;
-        if (position == block.end()) {
-            ++block;
-            position = block.begin();
-        }
-        return *this;
+  AbstractBlockIterator() = default;
+  AbstractBlockIterator(const Block &block, SubIterator position = {})
+      : parent_type{}, block{block},
+        position{position ? position : block.begin()} {}
+  AbstractBlockIterator(const type &other) = default;
+  type &operator=(const type &other) = default;
+  reference operator*() const { return *position; }
+  reference &operator*() { return *position; }
+  reference operator->() const { return *position; }
+  reference &operator->() { return *position; }
+  type &operator++() {
+    ++position;
+    if (position == block.end()) {
+      ++block;
+      position = block.begin();
     }
-    type operator++ (int) {
-        type result(*this);
-        operator++(*this);
-        return result;
-    }
-    bool operator ==(const type& other) const {
-        if (block.isSentinel() && other.block.isSentinel())
-            return true;
-        else
-            return (block == other.block) && (position == other.position);
-    }
-    bool operator !=(const type& other) const { return !(*this == other); }
-    bool isAtStartOfBlock() const { return position == block.begin(); }
+    return *this;
+  }
+  type operator++(int) {
+    type result(*this);
+    operator++(*this);
+    return result;
+  }
+  bool operator==(const type &other) const {
+    if (block.isSentinel() && other.block.isSentinel())
+      return true;
+    else
+      return (block == other.block) && (position == other.position);
+  }
+  bool operator!=(const type &other) const { return !(*this == other); }
+  bool isAtStartOfBlock() const { return position == block.begin(); }
 };
-
 }
 }
