@@ -20,17 +20,29 @@ namespace parser {
 
 using namespace boost::spirit::x3;
 
-//auto css_path = lit('(') >> +(char_ - (lit(')') | eoi)) >> ')';
-auto css_path = +char_;
+template <typename Iterator>
+auto getCSSParser(boost::iterator_range<Iterator> &out) {
+  auto get = [&out](auto ctx) { out = _attr(ctx); };
+  auto css_path = raw[+(char_ - (lit(')') | eoi))][get];
+  return lit('(') >> css_path[get] >> ')';
+}
 
-//auto tag_start = lexeme[lit('<') >> alpha];
-//auto attrib_no_quotes = lexeme[lit('=') >> raw[+(char_ - (space | '>' | eoi))]];
-//auto attrib_double_quotes = lit('=') >> lit('"') >> raw[+(char_ - (lit('"') | eoi))] >> '"';
-//auto attrib_single_quotes = lit('=') >> lit('\'') >> raw[+(char_ - (lit('\'') | eoi))] >> '\'';
-//auto inner_tag_junk = *(char_ - (eoi | '=' | '>'));
-//auto attribute = (attrib_double_quotes | attrib_no_quotes | attrib_single_quotes);
-//auto tag = tag_start >> +(inner_tag_junk >> attribute >> inner_tag_junk) >> '>';
-auto tag = *char_;
+template <typename Iterator>
+auto getHTMLParser(std::vector<boost::iterator_range<Iterator>> &out) {
+  auto get = [&out](auto ctx) { out.push_back(_attr(ctx)); };
+  auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
+  auto tag_end = lit('>') | lit("/>");
+  auto attrib_no_quotes =
+      lexeme[+alnum >> lit('=') >> raw[+(char_ - (space | tag_end | eoi))][get]];
+  auto attrib_double_quotes =
+      +alnum >> lit('=') >> lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
+  auto attrib_single_quotes =
+      +alnum >> lit('=') >> lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
+  auto attribute =
+      (attrib_double_quotes | attrib_no_quotes | attrib_single_quotes);
+  //return tag_start >> +attribute >> +(char_ - ('>' | eoi));
+  return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
+}
 
 } /* parser  */
 
@@ -39,12 +51,6 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                      const Config &config, iterator start, iterator end,
                      RangeEvent<iterator> noChange, DataEvent newData,
                      bool isCSS) {
-  /// An exception we throw when we have finished parsing the input, and catch
-  /// in the main loop.
-  struct Done {
-    iterator pos; /// The character that the next run should start with. (One
-                  /// past the last character we read).
-  };
 
   iterator nextNoChangeStart = start;
 
@@ -54,6 +60,9 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     boost::iterator_range<iterator> path;
     size_t howMuchToCut;
     const std::string &newData;
+    bool empty() const {
+      return (path.empty()) && (howMuchToCut == 0) && (newData.empty());
+    }
   };
 
   /** Takes the start and end of the path value generated and emits
@@ -125,8 +134,10 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     auto canonicalFromRelativePath = [&skipOverCount, &location,
                                       &path_range]() {
       std::string canonical(location);
-      if (location.back() != '/')
+      if (location.back() != '/') {
         canonical.push_back('/');
+        --skipOverCount;
+      }
       std::copy(path_range.begin(), path_range.end(),
                 std::back_inserter(canonical));
       // The written url will be 'images/x', but canonical will be
@@ -136,8 +147,6 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       // so we take away len('/blog') which is our location + 1
       // for the slash
       skipOverCount -= location.size();
-      if (location.back() != '/')
-        --skipOverCount;
       return canonical;
     };
 
@@ -201,12 +210,13 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     return {path_range, howMuchToCut, cdn_url};
   };
 
+  // Emit the change handlers
   auto operateOnBuckets = [&](Change change) {
     // Make sure we got given actual event handlers
     assert(noChange);
     assert(newData);
 
-    if (change.path.empty())
+    if (change.empty())
       return;
 
     // Output everything before the start of this path  as unchanged
@@ -231,58 +241,65 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
 
   // Find a path to replace in the html/css
   iterator pos = start;
-  try {
-    // See if we're looking for css urls or html/xml
-    if (isCSS) {
-      while (pos != end) {
-        boost::iterator_range<iterator> path(pos, end);
-        std::string tmp;
-        bool ok = parser::phrase_parse(
-            pos, end, parser::css_path, parser::space, tmp);
-        if (ok) {
-          operateOnBuckets(handlePath({path.begin(), path.end()}));
-        }
-      }
-    } else {
-      while (pos != end) {
-        std::vector<boost::iterator_range<iterator>> paths;
-        std::string tmp;
-        bool ok = parser::phrase_parse(
-            pos, end, parser::tag,
-            parser::space, tmp);
-        if ((ok) && (!paths.empty())) {
-          std::vector<Change> changes;
-          paths.push_back({pos, end});
-          changes.reserve(paths.size());
-          std::transform(paths.begin(), paths.end(), std::back_inserter(changes), handlePath);
-          if (changes.size() != 0) {
-            std::string newTagInnards;
-            Change finalChange{
-                {changes.front().path.begin(), changes.back().path.end()},
-                0,
-                newTagInnards};
-            iterator copyFrom = end;
-            auto out = std::back_inserter(newTagInnards);
-            for (Change& change : changes) {
-              if (change.path.empty())
-                continue;
-              if (copyFrom != end)
-                std::copy(copyFrom, change.path.begin(), out);
-              iterator start = change.path.begin();
-              std::advance(start, change.howMuchToCut);
-              std::copy(start, change.path.end(), out);
-              copyFrom = change.path.end();
-            }
-            operateOnBuckets(std::move(finalChange));
-          }
-        }
+  // See if we're looking for css urls or html/xml
+  if (isCSS) {
+    while (pos != end) {
+      boost::iterator_range<iterator> path(pos, end);
+      bool ok = parser::phrase_parse(pos, end, parser::getCSSParser(path),
+                                     parser::space);
+      if (ok) {
+        operateOnBuckets(handlePath({path.begin(), path.end()}));
+      } else {
+        // We can push out the unchanged data now
+        assert(noChange);
+        return noChange(nextNoChangeStart, end);
       }
     }
-
-  } catch (Done e) {
-    // We can push out the unchanged data now
-    assert(noChange);
-    return noChange(nextNoChangeStart, e.pos);
+  } else {
+    while (pos != end) {
+      std::vector<boost::iterator_range<iterator>> paths;
+      bool ok = parser::phrase_parse(pos, end, parser::getHTMLParser(paths),
+                                     parser::space);
+      if ((ok) && (!paths.empty())) {
+        std::vector<Change> changes;
+        paths.push_back({pos, end});
+        changes.reserve(paths.size());
+        std::transform(paths.begin(), paths.end(), std::back_inserter(changes),
+                       handlePath);
+        if (changes.size() != 0) {
+          std::string newTagInnards;
+          Change finalChange{
+              {changes.front().path.begin(), changes.back().path.end()},
+              0,
+              newTagInnards};
+          iterator copyFrom = end;
+          using namespace std;
+          cout << "Changes: " << endl;
+          auto out = std::back_inserter(newTagInnards);
+          for (Change &change : changes) {
+            std::string tmp;
+            std::copy(change.path.begin(), change.path.end(),
+                      back_inserter(tmp));
+            cout << "  Change path (" << tmp << ")" << endl;
+            cout << "         cut  (" << change.howMuchToCut << ")" << endl;
+            cout << "         new  (" << change.newData << ")" << endl;
+            if (change.empty())
+              continue;
+            if (copyFrom != end)
+              std::copy(copyFrom, change.path.begin(), out);
+            iterator start = change.path.begin();
+            std::advance(start, change.howMuchToCut);
+            std::copy(start, change.path.end(), out);
+            copyFrom = change.path.end();
+          }
+          operateOnBuckets(std::move(finalChange));
+        }
+      } else {
+        // We can push out the unchanged data now
+        assert(noChange);
+        return noChange(nextNoChangeStart, end);
+      }
+    }
   }
   return end;
 }

@@ -19,47 +19,6 @@ struct SequencedIteratorPair {
 };
 using SequencedNewData = std::pair<int, std::string>;
 
-/*
-std::__1::__wrap_iter<char const *>
-cdnalizer::rewriteHTML<std::__1::__wrap_iter<char const *>, char>(
-    std::__1::basic_string<char, std::__1::char_traits<char>,
-                           std::__1::allocator<char>> const &,
-    std::__1::basic_string<char, std::__1::char_traits<char>,
-                           std::__1::allocator<char>> const &,
-    cdnalizer::Config const &, std::__1::__wrap_iter<char const *>,
-    std::__1::__wrap_iter<char const *>,
-    std::__1::function<std::__1::__wrap_iter<char const *>(
-        std::__1::__wrap_iter<char const *> const &,
-        std::__1::__wrap_iter<char const *> const &)>,
-    std::__1::function<
-        void(std::__1::basic_string<char, std::__1::char_traits<char>,
-                                    std::__1::allocator<char>>)>)
-                                    */
-
-namespace cdnalizer
-{
-// 26 /home/ubuntu/projects/cdnalizer/src/Rewriter.hpp:78:
-// undefined reference to
-//
-
-/*
-    std::__1::basic_string<char, std::__1::char_traits<char>,
-                           std::__1::allocator<char>> const &,
-    std::__1::basic_string<char, std::__1::char_t raits<char>,
-                           std::__1::allocator<char>> const &,
-    cdnalizer::Config const &, std::__1::__wrap_iter<char const *>,
-    std::__1::__wrap_iter<char const *>,
-    std::__1::function<std::__1::__wrap_iter<char const *>(
-        std::__1::__wrap_iter<char const *> const &,
-        std::__1::__wrap_iter<char const *> const &)>,
-    std::__1::function<
-        void(std::__1::basic_string<char, std::__1::char_traits<char>,
-                                    std::__1::allocator<char>>)>)'    
-*/
-
-  
-} /* cdnalizer */ 
-
 // Nice ways to print some of the types we're working with
 
 namespace std {
