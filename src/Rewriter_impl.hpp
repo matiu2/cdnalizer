@@ -33,14 +33,15 @@ auto getHTMLParser(std::vector<boost::iterator_range<Iterator>> &out) {
   auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
   auto tag_end = lit('>') | lit("/>");
   auto attrib_no_quotes =
-      lexeme[+alnum >> lit('=') >> raw[+(char_ - (space | tag_end | eoi))][get]];
-  auto attrib_double_quotes =
-      +alnum >> lit('=') >> lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
-  auto attrib_single_quotes =
-      +alnum >> lit('=') >> lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
+      lexeme[+alnum >> lit('=') >>
+             raw[alnum >> *(char_ - (space | tag_end | eoi))][get]];
+  auto attrib_double_quotes = +alnum >> lit('=') >> lit('"') >>
+                              raw[+(char_ - (lit('"') | eoi))][get] >> '"';
+  auto attrib_single_quotes = +alnum >> lit('=') >> lit('\'') >>
+                              raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
   auto attribute =
       (attrib_double_quotes | attrib_no_quotes | attrib_single_quotes);
-  //return tag_start >> +attribute >> +(char_ - ('>' | eoi));
+  // return tag_start >> +attribute >> +(char_ - ('>' | eoi));
   return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
 }
 
@@ -63,6 +64,9 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     bool empty() const {
       return (path.empty()) && (howMuchToCut == 0) && (newData.empty());
     }
+    size_t size() const {
+      return std::distance(path.begin(), path.end());
+    }
   };
 
   /** Takes the start and end of the path value generated and emits
@@ -83,7 +87,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     // Input variables we care about:
     //
     //  * path_range: The path we're replacing
-    //  * location: The path that the HTML/CSS that generated this path comes from
+    //  * location: The path that the HTML/CSS that generated this path comes
+    //  from
     //  * server_url: The protocol and hostname part of the request
     //  * config.findCDNUrl(canonical): the map of base_urls to be replaced by
     //    cdn URLs
@@ -144,7 +149,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       // '/blog/images/x'
       // later we'll find that '/blog/images/' is in the config, so skip over 12
       // chars but we only want to skip over 6 chars ('images/')
-      // so we take away len('/blog') which is our location + 1
+      // so we take away len('/blog') which is our location + 2
       // for the slash
       skipOverCount -= location.size();
       return canonical;
@@ -215,9 +220,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     // Make sure we got given actual event handlers
     assert(noChange);
     assert(newData);
-
-    if (change.empty())
-      return;
+    assert(!change.empty());
 
     // Output everything before the start of this path  as unchanged
     nextNoChangeStart = noChange(nextNoChangeStart, change.path.begin());
@@ -249,58 +252,60 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                                      parser::space);
       if (ok) {
         operateOnBuckets(handlePath({path.begin(), path.end()}));
-      } else {
-        // We can push out the unchanged data now
-        assert(noChange);
-        return noChange(nextNoChangeStart, end);
-      }
+      } else
+        break;
     }
   } else {
     while (pos != end) {
       std::vector<boost::iterator_range<iterator>> paths;
       bool ok = parser::phrase_parse(pos, end, parser::getHTMLParser(paths),
                                      parser::space);
+      if (!ok)
+        break;
       if ((ok) && (!paths.empty())) {
         std::vector<Change> changes;
-        paths.push_back({pos, end});
         changes.reserve(paths.size());
-        std::transform(paths.begin(), paths.end(), std::back_inserter(changes),
-                       handlePath);
-        if (changes.size() != 0) {
+        for (const auto &path : paths) {
+          Change change(handlePath(path));
+          if (!change.empty())
+            changes.emplace_back(std::move(change));
+        }
+        switch (changes.size()) {
+        case 1:
+          operateOnBuckets(changes.front());
+        case 0:
+          continue;
+        default: {
+          // We'll make one change for the whole tag
           std::string newTagInnards;
-          Change finalChange{
+          Change compositeChange{
               {changes.front().path.begin(), changes.back().path.end()},
               0,
               newTagInnards};
-          iterator copyFrom = end;
-          using namespace std;
-          cout << "Changes: " << endl;
+          // TODO: experiment if reserving the memory with a scan like this is
+          // faster or slower than not reserving the memory, or reserving some
+          // guestimate
+          newTagInnards.reserve(compositeChange.size());
+          auto in = changes.front().path.begin();
           auto out = std::back_inserter(newTagInnards);
           for (Change &change : changes) {
-            std::string tmp;
-            std::copy(change.path.begin(), change.path.end(),
-                      back_inserter(tmp));
-            cout << "  Change path (" << tmp << ")" << endl;
-            cout << "         cut  (" << change.howMuchToCut << ")" << endl;
-            cout << "         new  (" << change.newData << ")" << endl;
-            if (change.empty())
-              continue;
-            if (copyFrom != end)
-              std::copy(copyFrom, change.path.begin(), out);
-            iterator start = change.path.begin();
-            std::advance(start, change.howMuchToCut);
-            std::copy(start, change.path.end(), out);
-            copyFrom = change.path.end();
+            // Copy up to the beginning of the next change (first time it will
+            // do nothing)
+            while (in != change.path.begin())
+              *out++ = *in++;
+            // Output the new data
+            std::copy(change.newData.begin(), change.newData.end(), out);
+            // Skip over the start of the path that we've replaced
+            std::advance(in, change.howMuchToCut);
           }
-          operateOnBuckets(std::move(finalChange));
+          operateOnBuckets(compositeChange);
         }
-      } else {
-        // We can push out the unchanged data now
-        assert(noChange);
-        return noChange(nextNoChangeStart, end);
+        };
       }
     }
   }
-  return end;
+  // We can push out the unchanged data now
+  assert(noChange);
+  return noChange(nextNoChangeStart, end);
 }
 }
