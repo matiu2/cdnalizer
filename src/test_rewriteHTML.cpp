@@ -64,168 +64,222 @@ bool operator ==(const SequencedIteratorPair& lhs, const SequencedIteratorPair& 
 using namespace bandit;
 using namespace snowhouse;
 
-go_bandit([](){
+go_bandit([]() {
 
-    size_t sequence;
-    std::vector<SequencedIteratorPair> unchanged_blocks;
-    std::vector<SequencedNewData> new_blocks;
-    std::string location("/blog");
+  size_t sequence;
+  std::vector<SequencedIteratorPair> unchanged_blocks;
+  std::vector<SequencedNewData> new_blocks;
+  std::string location("/blog");
 
-    std::stringstream log;
+  std::stringstream log;
 
-    cdnalizer::Config cfg{
-        {{"/images", "http://cdn.supa.ws/imgs"}}
-    };
+  cdnalizer::Config cfg{{{"/images", "http://cdn.supa.ws/imgs"}}};
 
-    RangeEvent<Iterator> unchanged = [&](Iterator start, Iterator end) {
-        unchanged_blocks.push_back(SequencedIteratorPair{sequence++, start, end});
-        std::string out(start, end);
-        log << "Unchanged: " << out << '\n';
-        return end;
-    };
+  RangeEvent<Iterator> unchanged = [&](Iterator start, Iterator end) {
+    unchanged_blocks.push_back(SequencedIteratorPair{sequence++, start, end});
+    std::string out(start, end);
+    log << "Unchanged: " << out << '\n';
+    return end;
+  };
 
-    DataEvent newData = [&](std::string data) {
-        new_blocks.push_back(SequencedNewData(sequence++, data));
-        log << "New data: " << data << '\n';
-    };
+  DataEvent newData = [&](std::string data) {
+    new_blocks.push_back(SequencedNewData(sequence++, data));
+    log << "New data: " << data << '\n';
+  };
 
-    auto doRewrite = [&](Iterator start, const Iterator &end, const Config &cfg,
-                         bool isCSS) {
-      return cdnalizer::rewriteHTML(location, cfg, start, end, unchanged,
-                                    newData, isCSS);
-    };
+  auto doRewrite = [&](Iterator start, const Iterator &end, const Config &cfg,
+                       bool isCSS) {
+    return cdnalizer::rewriteHTML(location, cfg, start, end, unchanged, newData,
+                                  isCSS);
+  };
 
-    before_each([&]() {
-        sequence = 1;
-        unchanged_blocks.clear();
-        new_blocks.clear();
+  before_each([&]() {
+    sequence = 1;
+    unchanged_blocks.clear();
+    new_blocks.clear();
+  });
+
+  // Returns true if nothing is changed after running doRewrite
+  auto ensureNoChange = [&](const std::string &data, bool isCSS = false) {
+    Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, isCSS);
+    std::cout << "Log: " << log.str() << std::endl;
+    AssertThat(end, Is().EqualTo(data.cend()));
+    AssertThat(unchanged_blocks, HasLength(1));
+    auto block = unchanged_blocks.at(0);
+    AssertThat(block.sequence, Equals((size_t)1));
+    AssertThat(block.start, Is().EqualTo(data.cbegin()));
+    AssertThat(block.end, Is().EqualTo(data.cend()));
+  };
+
+  describe("Low level Rewrite HTML", [&]() {
+
+    it("1. Returns unchanged when there are no tags", [&]() {
+      const std::string data{"There are no tags here"};
+      ensureNoChange(data);
     });
 
-    // Returns true if nothing is changed after running doRewrite
-    auto ensureNoChange = [&](const std::string &data, bool isCSS = false) {
-      Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, isCSS);
-      std::cout << "Log: " << log.str() << std::endl;
+    it("2. Returns unchanged when we don't find the tags in the library", [&]() {
+      const std::string data{
+          R"**(This is <some funny="tag">that</some> <we dont="care"/> about)**"};
+      ensureNoChange(data);
+    });
+
+    it("3. Ignores sligthly wrong paths we don't care about", [&]() {
+      const std::string data{
+          R"**(<a src="../images/a.gif"><img href="/home/images/bad.link" />some link</a>)**"};
+      ensureNoChange(data);
+    });
+
+    it("4. Ignores when location breaks our match", [&]() {
+      const std::string data{
+          R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
+      cfg.addPath("/blog2/images", "http://cdn.supa.ws/blog2/imags");
+      Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
       AssertThat(end, Is().EqualTo(data.cend()));
-      AssertThat(unchanged_blocks, HasLength(1));
+      AssertThat(unchanged_blocks, HasLength(2));
+
+      // Unchanged: "<a href="images/a.gif"><img src="
       auto block = unchanged_blocks.at(0);
-      AssertThat(block.sequence, Equals((size_t)1));
-      AssertThat(block.start, Is().EqualTo(data.cbegin()));
-      AssertThat(block.end, Is().EqualTo(data.cend()));
-    };
+      AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                     data.cbegin() + 33}));
 
-    describe("Low level Rewrite HTML", [&](){
+      // New Data: "http://cdn.supa.ws/imgs"
+      AssertThat(new_blocks, HasLength(1));
+      auto new_block = new_blocks.at(0);
+      AssertThat(new_block,
+                 Equals(SequencedNewData{2, "http://cdn.supa.ws/imgs"}));
 
-        it("1. Returns unchanged when there are no tags", [&](){
-            const std::string data{"There are no tags here"};
-            ensureNoChange(data);
-        });
-
-        it("2. Returns unchanged when we don't find the tags in the library", [&](){
-            const std::string data{R"**(This is <some funny="tag">that</some> <we dont="care"/> about)**"};
-            ensureNoChange(data);
-        });
-
-        it("3. Ignores sligthly wrong paths we don't care about", [&](){
-            const std::string data{R"**(<a src="../images/a.gif"><img href="/home/images/bad.link" />some link</a>)**"};
-            ensureNoChange(data);
-        });
-
-        it("4. Ignores when location breaks our match", [&](){
-            const std::string data{R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
-            cfg.addPath("/blog2/images", "http://cdn.supa.ws/blog2/imags");
-            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
-            AssertThat(end, Is().EqualTo(data.cend()));
-            AssertThat(unchanged_blocks, HasLength(2));
-
-            // Unchanged: "<a href="images/a.gif"><img src="
-            auto block = unchanged_blocks.at(0);
-            AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(), data.cbegin()+33}));
-
-            // New Data: "http://cdn.supa.ws/imgs"
-            AssertThat(new_blocks, HasLength(1));
-            auto new_block = new_blocks.at(0);
-            AssertThat(new_block, Equals(SequencedNewData{2, "http://cdn.supa.ws/imgs"}));
-
-            // Unchanged: '/bad.link" />Bad location</a>'
-            block = unchanged_blocks.at(1);
-            AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin()+40, data.cend()}));
-        });
-
-        it("5. Works out location correctly", [&](){
-            const std::string data{R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
-
-            // location is '/blog/', so 'images/a.gif' should be interpreted as '/blog/images/a.gif'
-            cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
-            Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
-            AssertThat(end, Is().EqualTo(data.cend()));
-            AssertThat(unchanged_blocks, HasLength(3));
-
-            // Unchanged: "<a href="
-            auto block = unchanged_blocks.at(0);
-            AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(), data.cbegin()+9}));
-
-            // New Data: "http://cdn.supa.ws/blog/imags"
-            AssertThat(new_blocks, HasLength(2));
-            SequencedNewData new_block = new_blocks.at(0);
-            AssertThat(new_block, Equals(SequencedNewData{2, "http://cdn.supa.ws/blog/imags"}));
-
-            // Unchanged: '/a.gif"><img src='
-            block = unchanged_blocks.at(1);
-            AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin()+15, data.cbegin()+33}));
-
-            // New Data: "http://cdn.supa.ws/imgs"
-            new_block = new_blocks.at(1);
-            SequencedNewData expected = SequencedNewData{4, "http://cdn.supa.ws/imgs"};
-            AssertThat(new_block, Equals(expected));
-
-            // Unchanged: '/bad.link" />Bad location</a>'
-            block = unchanged_blocks.at(2);
-            AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin()+40, data.cend()}));
-        });
-
-        it("6. Works out location with an extra slash correctly", [&]() {
-          const std::string data{
-              R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
-
-          location = "/blog/";
-           
-          // location is '/blog/', so 'images/a.gif' should be interpreted as
-          // '/blog/images/a.gif'
-          cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
-          Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
-          AssertThat(end, Is().EqualTo(data.cend()));
-          AssertThat(unchanged_blocks, HasLength(3));
-
-          // Unchanged: "<a href="
-          auto block = unchanged_blocks.at(0);
-          AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
-                                                         data.cbegin() + 9}));
-
-          // New Data: "http://cdn.supa.ws/blog/imags"
-          AssertThat(new_blocks, HasLength(2));
-          SequencedNewData new_block = new_blocks.at(0);
-          AssertThat(new_block, Equals(SequencedNewData{
-                                    2, "http://cdn.supa.ws/blog/imags"}));
-
-          // Unchanged: '/a.gif"><img src='
-          block = unchanged_blocks.at(1);
-          AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 15,
-                                                         data.cbegin() + 33}));
-
-          // New Data: "http://cdn.supa.ws/imgs"
-          new_block = new_blocks.at(1);
-          SequencedNewData expected =
-              SequencedNewData{4, "http://cdn.supa.ws/imgs"};
-          AssertThat(new_block, Equals(expected));
-
-          // Unchanged: '/bad.link" />Bad location</a>'
-          block = unchanged_blocks.at(2);
-          AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 40,
-                                                         data.cend()}));
-        });
+      // Unchanged: '/bad.link" />Bad location</a>'
+      block = unchanged_blocks.at(1);
+      AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 40,
+                                                     data.cend()}));
     });
+
+    it("5. Works out location correctly", [&]() {
+      const std::string data{
+          R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
+
+      // location is '/blog/', so 'images/a.gif' should be interpreted as
+      // '/blog/images/a.gif'
+      cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
+      Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
+      AssertThat(end, Is().EqualTo(data.cend()));
+      AssertThat(unchanged_blocks, HasLength(3));
+
+      // Unchanged: "<a href="
+      auto block = unchanged_blocks.at(0);
+      AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                     data.cbegin() + 9}));
+
+      // New Data: "http://cdn.supa.ws/blog/imags"
+      AssertThat(new_blocks, HasLength(2));
+      SequencedNewData new_block = new_blocks.at(0);
+      AssertThat(new_block,
+                 Equals(SequencedNewData{2, "http://cdn.supa.ws/blog/imags"}));
+
+      // Unchanged: '/a.gif"><img src='
+      block = unchanged_blocks.at(1);
+      AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 15,
+                                                     data.cbegin() + 33}));
+
+      // New Data: "http://cdn.supa.ws/imgs"
+      new_block = new_blocks.at(1);
+      SequencedNewData expected =
+          SequencedNewData{4, "http://cdn.supa.ws/imgs"};
+      AssertThat(new_block, Equals(expected));
+
+      // Unchanged: '/bad.link" />Bad location</a>'
+      block = unchanged_blocks.at(2);
+      AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 40,
+                                                     data.cend()}));
+    });
+
+    it("6. Works out location with an extra slash correctly", [&]() {
+      const std::string data{
+          R"**(<a href="images/a.gif"><img src="/images/bad.link" />Bad location</a>)**"};
+
+      location = "/blog/";
+
+      // location is '/blog/', so 'images/a.gif' should be interpreted as
+      // '/blog/images/a.gif'
+      cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
+      Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
+      AssertThat(end, Is().EqualTo(data.cend()));
+      AssertThat(unchanged_blocks, HasLength(3));
+
+      // Unchanged: "<a href="
+      auto block = unchanged_blocks.at(0);
+      AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                     data.cbegin() + 9}));
+
+      // New Data: "http://cdn.supa.ws/blog/imags"
+      AssertThat(new_blocks, HasLength(2));
+      SequencedNewData new_block = new_blocks.at(0);
+      AssertThat(new_block,
+                 Equals(SequencedNewData{2, "http://cdn.supa.ws/blog/imags"}));
+
+      // Unchanged: '/a.gif"><img src='
+      block = unchanged_blocks.at(1);
+      AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 15,
+                                                     data.cbegin() + 33}));
+
+      // New Data: "http://cdn.supa.ws/imgs"
+      new_block = new_blocks.at(1);
+      SequencedNewData expected =
+          SequencedNewData{4, "http://cdn.supa.ws/imgs"};
+      AssertThat(new_block, Equals(expected));
+
+      // Unchanged: '/bad.link" />Bad location</a>'
+      block = unchanged_blocks.at(2);
+      AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 40,
+                                                     data.cend()}));
+    });
+  });
+
+  it("7. Handles multiple attribute changes, and with all types of quotes",
+     [&]() {
+    const std::string data{
+        R"(<a href="images/a.gif" other_attrib=/blog/images/b.gif singles='images/c.gif'><img src="/images/bad.link" />Bad location</a>)"};
+    /*     0         1         2         3         4         5         6         7         8         9         0         1         2         3 */
+
+    location = "/blog/";
+
+    // location is '/blog/', so 'images/a.gif' should be interpreted as
+    // '/blog/images/a.gif'
+    cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
+    Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
+    AssertThat(end, Is().EqualTo(data.cend()));
+    AssertThat(unchanged_blocks, HasLength(3));
+
+    // Unchanged: "<a href="
+    auto block = unchanged_blocks.at(0);
+    AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                   data.cbegin() + 9}));
+
+    // New Data: "http://cdn.supa.ws/blog/imags"
+    AssertThat(new_blocks, HasLength(2));
+    SequencedNewData new_block = new_blocks.at(0);
+    AssertThat(
+        new_block,
+        Equals(SequencedNewData{
+            2,
+            R"(http://cdn.supa.ws/blog/imags/a.gif" other_attrib=http://cdn.supa.ws/blog/imags/b.gif singles='http://cdn.supa.ws/blog/imags)"}));
+
+    // Unchanged: '/c.gif"><img src='
+    block = unchanged_blocks.at(1);
+    AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 70,
+                                                   data.cbegin() + 88}));
+
+    // New Data: "http://cdn.supa.ws/imgs"
+    new_block = new_blocks.at(1);
+    SequencedNewData expected = SequencedNewData{4, "http://cdn.supa.ws/imgs"};
+    AssertThat(new_block, Equals(expected));
+
+    // Unchanged: '/bad.link" />Bad location</a>'
+    block = unchanged_blocks.at(2);
+    AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 95,
+                                                   data.cend()}));
+     });
 });
 
-int main(int argc, char** argv) {
-    return bandit::run(argc, argv);
-}
+int main(int argc, char **argv) { return bandit::run(argc, argv); }

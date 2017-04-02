@@ -32,16 +32,17 @@ auto getHTMLParser(std::vector<boost::iterator_range<Iterator>> &out) {
   auto get = [&out](auto ctx) { out.push_back(_attr(ctx)); };
   auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
   auto tag_end = lit('>') | lit("/>");
+  auto no_quote_chars = (char_ - (tag_end | '\'' | '"' | eoi | space));
+  auto attrib_name_chars = alnum | '_' | ':';
   auto attrib_no_quotes =
-      lexeme[+alnum >> lit('=') >>
-             raw[alnum >> *(char_ - (space | tag_end | eoi))][get]];
-  auto attrib_double_quotes = +alnum >> lit('=') >> lit('"') >>
+      +attrib_name_chars >> lit('=') >>
+      lexeme[raw[+no_quote_chars][get] >> (tag_end | space)];
+  auto attrib_double_quotes = +attrib_name_chars >> lit('=') >> lit('"') >>
                               raw[+(char_ - (lit('"') | eoi))][get] >> '"';
-  auto attrib_single_quotes = +alnum >> lit('=') >> lit('\'') >>
+  auto attrib_single_quotes = +attrib_name_chars >> lit('=') >> lit('\'') >>
                               raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
   auto attribute =
-      (attrib_double_quotes | attrib_no_quotes | attrib_single_quotes);
-  // return tag_start >> +attribute >> +(char_ - ('>' | eoi));
+      (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes);
   return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
 }
 
@@ -298,6 +299,10 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
             // Skip over the start of the path that we've replaced
             std::advance(in, change.howMuchToCut);
           }
+          compositeChange.howMuchToCut =
+              std::distance(compositeChange.path.begin(),
+                            compositeChange.path.end()) -
+              changes.back().howMuchToCut;
           operateOnBuckets(compositeChange);
         }
         };
