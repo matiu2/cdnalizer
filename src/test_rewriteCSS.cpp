@@ -38,7 +38,7 @@ go_bandit([]() {
     newData.emplace_back(std::move(aNewData));
   };
 
-  describe("Low level Rewrite HTML", [&]() {
+  describe("Rewrite CSS", [&]() {
 
     it("1. Returns unchanged when there are no paths", [&]() {
       const std::string data{"There are no paths here"};
@@ -61,6 +61,19 @@ go_bandit([]() {
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
       AssertThat(unchanged.at(0), Is().EqualTo("/b.gif)"));
     });
+
+    it("3. Picks up paths with no quotes but spaces", [&]() {
+      const std::string data{"background-image(   /images/b.gif   )"};
+      return cdnalizer::rewriteHTML<iterator>(
+          server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
+          newDataEvent, true);
+      AssertThat(unchanged, HasLength(2));
+      AssertThat(unchanged.at(0), Is().EqualTo("background-image(   "));
+      AssertThat(newData, HasLength(1));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
+      AssertThat(unchanged.at(0), Is().EqualTo("/b.gif   )"));
+    });
+
   });
 
 });
