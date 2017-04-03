@@ -6,12 +6,16 @@ Currently it looks for a URL in 'single' or "double" quotes, but these are also 
 
   body { background: url(yellow) }
   body { background: url( yellow ) }
+  body { background: url( 'yellow' ) }
+  body { background: url( "yellow" ) }
 
 ## html
 
   <img src=yellow alt=yellow/>
   <img src=yellow>
   <img src=yellow/>
+  <img ok src=yellow/>
+
 
 So the rules should be, possibly, if it starts with 'a', 'bcd' are possible:
 

@@ -236,8 +236,7 @@ go_bandit([]() {
     });
   });
 
-  it("7. Handles multiple attribute changes, and with all types of quotes",
-     [&]() {
+  it("7. Handles multiple attribute changes, and with all types of quotes", [&]() {
     const std::string data{
         R"(<a href="images/a.gif" other_attrib=/blog/images/b.gif singles='images/c.gif'><img src="/images/bad.link" />Bad location</a>)"};
     /*     0         1         2         3         4         5         6         7         8         9         0         1         2         3 */
@@ -256,7 +255,7 @@ go_bandit([]() {
     AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
                                                    data.cbegin() + 9}));
 
-    // New Data: "http://cdn.supa.ws/blog/imags"
+    // New Data: The inside of the tag up until the last path bit of the last attribute
     AssertThat(new_blocks, HasLength(2));
     SequencedNewData new_block = new_blocks.at(0);
     AssertThat(
@@ -279,7 +278,34 @@ go_bandit([]() {
     block = unchanged_blocks.at(2);
     AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 95,
                                                    data.cend()}));
-     });
+  });
+
+  it("8. Handles boolean tags", [&]() {
+    const std::string data(
+        R"(junky bits <A boolean href="/images/d.gif" check_something_else>click here</a>)");
+    Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
+    AssertThat(end, Is().EqualTo(data.cend()));
+
+    AssertThat(unchanged_blocks, HasLength(2));
+
+    // Unchanged: "junky bits <A boolean href=""
+    auto block = unchanged_blocks.at(0);
+    AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                   data.cbegin() + 28}));
+    // New Data: "http://cdn.supa.ws/imgs"
+    auto new_block = new_blocks.at(0);
+    SequencedNewData expected = SequencedNewData{2, "http://cdn.supa.ws/imgs"};
+    AssertThat(new_block, Equals(expected));
+
+    // Unchanged: --d.gif" check_something_else>click here</a>--
+    block = unchanged_blocks.at(1);
+    AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 35,
+                                                   data.cbegin() + 35 + 43}));
+
+
+
+  });
+
 });
 
 int main(int argc, char **argv) { return bandit::run(argc, argv); }

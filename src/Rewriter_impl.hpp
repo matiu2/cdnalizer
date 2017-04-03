@@ -34,15 +34,18 @@ auto getHTMLParser(std::vector<boost::iterator_range<Iterator>> &out) {
   auto tag_end = lit('>') | lit("/>");
   auto no_quote_chars = (char_ - (tag_end | '\'' | '"' | eoi | space));
   auto attrib_name_chars = alnum | '_' | ':';
+  auto attrib_name = +attrib_name_chars;
+  auto value_attrib = attrib_name >> '=';
+  auto bool_attrib = attrib_name;
   auto attrib_no_quotes =
-      +attrib_name_chars >> lit('=') >>
       lexeme[raw[+no_quote_chars][get] >> (tag_end | space)];
-  auto attrib_double_quotes = +attrib_name_chars >> lit('=') >> lit('"') >>
-                              raw[+(char_ - (lit('"') | eoi))][get] >> '"';
-  auto attrib_single_quotes = +attrib_name_chars >> lit('=') >> lit('\'') >>
-                              raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
-  auto attribute =
-      (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes);
+  auto attrib_double_quotes =
+      lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
+  auto attrib_single_quotes =
+      lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
+  auto attribute = (value_attrib >> (attrib_double_quotes |
+                                     attrib_single_quotes | attrib_no_quotes) |
+                    bool_attrib);
   return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
 }
 
