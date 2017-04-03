@@ -74,6 +74,19 @@ go_bandit([]() {
       AssertThat(unchanged.at(0), Is().EqualTo("/b.gif   )"));
     });
 
+    it("4. Picks up paths with double quotes and spaces", [&]() {
+      const std::string data{R"--(   background-image(   "/images/b.gif"   ); )--"};
+      return cdnalizer::rewriteHTML<iterator>(
+          server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
+          newDataEvent, true);
+      AssertThat(unchanged, HasLength(2));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--("background-image(   ")--"));
+      AssertThat(newData, HasLength(1));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--(/b.gif"   ); )--"));
+    });
+
+
   });
 
 });
