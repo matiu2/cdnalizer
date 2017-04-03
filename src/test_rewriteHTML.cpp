@@ -6,6 +6,7 @@
 #include "Rewriter.hpp"
 #include "Rewriter_impl.hpp"
 
+#include <bandit/bandit.h>
 #include <ostream>
 
 using namespace cdnalizer;
@@ -60,7 +61,6 @@ bool operator ==(const SequencedIteratorPair& lhs, const SequencedIteratorPair& 
 }
 
 // Acutal tests
-#include <bandit/bandit.h>
 using namespace bandit;
 using namespace snowhouse;
 
