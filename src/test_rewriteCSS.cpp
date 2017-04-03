@@ -26,28 +26,41 @@ go_bandit([]() {
 
   using iterator = std::string::const_iterator;
 
+  std::vector<std::string> unchanged, newData;
+  RangeEvent<iterator> unchangedEvent = [&](const iterator &a,
+                                            const iterator &b) -> iterator {
+    std::string tmp;
+    std::copy(a, b, std::back_inserter(tmp));
+    unchanged.emplace_back(std::move(tmp));
+    return b;
+  };
+  auto newDataEvent = [&newData](std::string aNewData) {
+    newData.emplace_back(std::move(aNewData));
+  };
+
   describe("Low level Rewrite HTML", [&]() {
 
     it("1. Returns unchanged when there are no paths", [&]() {
       const std::string data{"There are no paths here"};
-      std::string unchanged;
-      std::string newData;
-      RangeEvent<iterator> unchangedEvent =
-          [&](const iterator &a,
-              const iterator &b) -> iterator {
-        std::copy(a, b, std::back_inserter(unchanged));
-        return b;
-      };
-      auto newDataEvent = [&newData](std::string aNewData) {
-        newData = aNewData;
-      };
       return cdnalizer::rewriteHTML<iterator>(
           server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
           newDataEvent, true);
-      AssertThat(unchanged, Is().EqualTo(data));
-      AssertThat(newData, Is().EqualTo(""));
+      AssertThat(unchanged, HasLength(1));
+      AssertThat(unchanged.at(0), Is().EqualTo(data));
+      AssertThat(newData, HasLength(0));
     });
 
+    it("2. Picks up paths with no quotes and no spaces", [&]() {
+      const std::string data{"background-image(/images/b.gif)"};
+      return cdnalizer::rewriteHTML<iterator>(
+          server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
+          newDataEvent, true);
+      AssertThat(unchanged, HasLength(2));
+      AssertThat(unchanged.at(0), Is().EqualTo("background-image("));
+      AssertThat(newData, HasLength(1));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
+      AssertThat(unchanged.at(0), Is().EqualTo("/b.gif)"));
+    });
   });
 
 });
