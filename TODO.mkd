@@ -2,30 +2,20 @@
 
 Currently it looks for a URL in 'single' or "double" quotes, but these are also evil but legit possibilities
 
-## css
+## css: 
 
-  body { background: url(yellow) }
-  body { background: url( yellow ) }
-  body { background: url( 'yellow' ) }
-  body { background: url( "yellow" ) }
+ * grab start and end { braces }
+ * only grab stuff starting with 'url'
 
-## html
+## html: find inline CSS and parse it
 
-  <img src=yellow alt=yellow/>
-  <img src=yellow>
-  <img src=yellow/>
-  <img ok src=yellow/>
+    <style>
+    h1 {color:red;}
+    p {color:blue;}
+    </style>
 
+  <div style="background: url(x.jpg)" />
 
-So the rules should be, possibly, if it starts with 'a', 'bcd' are possible:
-
- * starts with " ends with "
- * starts with ' ends with '
- * starts with = ends with ' ' (space), '/', '>'
- * starts with '(' ends with ')' (and gets white space stripped from the ends)
-
------
-
-# Base tag
+## Base tag
 
 Search for <base> html tags - https://www.w3schools.com/tags/tag_base.asp

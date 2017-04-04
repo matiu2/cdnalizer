@@ -116,9 +116,15 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
         !((strcmp(protocol, "http") == 0) && (port == 80)))
         hostname << ':' << port;
 
+    // Is it CSS or HTML/XML ?
+    bool isCSS(false);
+    if ((filter->r) && (filter->r->content_type))
+      isCSS = strcmp(filter->r->content_type, "text/css");
+
     // Do the actual rewriting now: TODO: check the mime type for css/html
-    Iterator tag_start = rewriteHTML(hostname.str(), location, *config,
-                                     beginning, end, onUnchangedData, newData, false);
+    Iterator tag_start =
+        rewriteHTML(hostname.str(), location, *config, beginning, end,
+                    onUnchangedData, newData, isCSS);
 
     // Store any left over data for next time
     if (tag_start != end) {
