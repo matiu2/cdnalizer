@@ -23,8 +23,12 @@ using namespace boost::spirit::x3;
 template <typename Iterator>
 auto getCSSParser(boost::iterator_range<Iterator> &out) {
   auto get = [&out](auto ctx) { out = _attr(ctx); };
-  auto css_path = raw[+(char_ - (lit(')') | eoi))][get];
-  return lit('(') >> css_path[get] >> ')';
+  auto double_quoted_path = lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
+  auto single_quoted_path = lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
+  auto no_quote_path = raw[+(char_ - (lit(')') | eoi))][get];
+  auto css_path = double_quoted_path | single_quoted_path | no_quote_path; 
+  auto junk_before_path = +(char_ - ('(' | eoi));
+  return junk_before_path >> lit('(') >> css_path >> ')';
 }
 
 template <typename Iterator>

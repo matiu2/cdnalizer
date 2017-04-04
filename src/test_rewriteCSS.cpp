@@ -22,7 +22,7 @@ go_bandit([]() {
 
   std::string server = "https://supa.ws";
   std::string location("/blog");
-  cdnalizer::Config cfg{{{"/images", "http://cdn.supa.ws/imgs"}}};
+  cdnalizer::Config cfg{{{"/images", "https://cdn.supa.ws/imgs"}}};
 
   using iterator = std::string::const_iterator;
 
@@ -34,9 +34,15 @@ go_bandit([]() {
     unchanged.emplace_back(std::move(tmp));
     return b;
   };
+
   auto newDataEvent = [&newData](std::string aNewData) {
     newData.emplace_back(std::move(aNewData));
   };
+
+  before_each([&]() {
+    unchanged.clear();
+    newData.clear();
+  });
 
   describe("Rewrite CSS", [&]() {
 
@@ -60,8 +66,8 @@ go_bandit([]() {
       AssertThat(unchanged, HasLength(2));
       AssertThat(unchanged.at(0), Is().EqualTo("background-image("));
       AssertThat(newData, HasLength(1));
-      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
-      AssertThat(unchanged.at(0), Is().EqualTo("/b.gif)"));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
+      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif)"));
     });
 
     it("3. Picks up paths with no quotes but spaces", [&]() {
@@ -73,8 +79,8 @@ go_bandit([]() {
       AssertThat(unchanged, HasLength(2));
       AssertThat(unchanged.at(0), Is().EqualTo("background-image(   "));
       AssertThat(newData, HasLength(1));
-      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
-      AssertThat(unchanged.at(0), Is().EqualTo("/b.gif   )"));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
+      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif   )"));
     });
 
     it("4. Picks up paths with double quotes and spaces", [&]() {
@@ -84,10 +90,10 @@ go_bandit([]() {
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--("background-image(   ")--"));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image(   ")--"));
       AssertThat(newData, HasLength(1));
-      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--(/b.gif"   ); )--"));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
+      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif"   ); )--"));
     });
 
     it("5. Picks up paths with single quotes and spaces", [&]() {
@@ -97,13 +103,11 @@ go_bandit([]() {
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--("background-image(   ')--"));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image(   ')--"));
       AssertThat(newData, HasLength(1));
-      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws"));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--(/b.gif'   ); )--"));
+      AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
+      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif'   ); )--"));
     });
-
-
 
   });
 
