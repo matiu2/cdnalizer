@@ -1,10 +1,7 @@
 # Bettur URL finding
 
-Currently it looks for a URL in 'single' or "double" quotes, but these are also evil but legit possibilities
-
 ## css: 
 
- * grab start and end { braces }
  * only grab stuff starting with 'url'
 
 ## html: find inline CSS and parse it

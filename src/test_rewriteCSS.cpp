@@ -58,55 +58,55 @@ go_bandit([]() {
     });
 
     it("2. Picks up paths with no quotes and no spaces", [&]() {
-      const std::string data{"background-image(/images/b.gif)"};
+      const std::string data{"background-image{ url(/images/b.gif)}"};
       auto end = cdnalizer::rewriteHTML<iterator>(
           server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo("background-image("));
+      AssertThat(unchanged.at(0), Is().EqualTo("background-image{ url("));
       AssertThat(newData, HasLength(1));
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
-      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif)"));
+      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif)}"));
     });
 
     it("3. Picks up paths with no quotes but spaces", [&]() {
-      const std::string data{"background-image(   /images/b.gif   )"};
+      const std::string data{"background-image  {  url(  /images/b.gif   )   }"};
       auto end = cdnalizer::rewriteHTML<iterator>(
           server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo("background-image(   "));
+      AssertThat(unchanged.at(0), Is().EqualTo("background-image  {  url(  "));
       AssertThat(newData, HasLength(1));
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
-      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif   )"));
+      AssertThat(unchanged.at(1), Is().EqualTo("/b.gif   )   }"));
     });
 
     it("4. Picks up paths with double quotes and spaces", [&]() {
-      const std::string data{R"--(   background-image(   "/images/b.gif"   ); )--"};
+      const std::string data{R"--(   background-image{   url("/images/b.gif"   ); } )--"};
       auto end = cdnalizer::rewriteHTML<iterator>(
           server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image(   ")--"));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image{   url(")--"));
       AssertThat(newData, HasLength(1));
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
-      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif"   ); )--"));
+      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif"   ); } )--"));
     });
 
     it("5. Picks up paths with single quotes and spaces", [&]() {
-      const std::string data{R"--(   background-image(   '/images/b.gif'   ); )--"};
+      const std::string data{R"--(   background-image{   url('/images/b.gif'   )}; )--"};
       auto end = cdnalizer::rewriteHTML<iterator>(
           server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
           newDataEvent, true);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(2));
-      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image(   ')--"));
+      AssertThat(unchanged.at(0), Is().EqualTo(R"--(   background-image{   url(')--"));
       AssertThat(newData, HasLength(1));
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
-      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif'   ); )--"));
+      AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif'   )}; )--"));
     });
 
   });
