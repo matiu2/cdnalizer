@@ -16,6 +16,17 @@
 
 namespace cdnalizer {
 
+// The type of an HTML attribute. For Normal attributes, we treate the whole
+// contents as a path. For Style attributes, we invoke the CSS parser.
+enum attrib_type { Normal, Style };
+
+// A record of an attribute with its type and location for processesing later
+template <typename Iterator>
+struct AttribRec {
+  attrib_type type = Normal;
+  boost::iterator_range<Iterator> location;
+};
+
 namespace parser {
 
 using namespace boost::spirit::x3;
@@ -31,25 +42,44 @@ auto getCSSParser(boost::iterator_range<Iterator> &out) {
   return junk_before_path >> "url" >> '(' >> css_path >> ')';
 }
 
+/// @param type What kind of attribute is the upcoming attribute (normal / style)
 template <typename Iterator>
-auto getHTMLParser(std::vector<boost::iterator_range<Iterator>> &out) {
-  auto get = [&out](auto ctx) { out.push_back(_attr(ctx)); };
+auto getHTMLParser(std::vector<AttribRec<Iterator>> &out) {
+
+  // Operations
+  attrib_type type(Normal);
+  auto is_style = [&type](const auto &) {
+    type = Style; };
+  auto is_normal = [&type](const auto &) {
+    type = Normal; };
+  auto get = [&out, &type](const auto &ctx) {
+    out.push_back({type, _attr(ctx)});
+  };
+
+  // Actual parsers //
   auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
   auto tag_end = lit('>') | lit("/>");
-  auto no_quote_chars = (char_ - (tag_end | '\'' | '"' | eoi | space));
+  // Attribute name finders
   auto attrib_name_chars = alnum | '_' | ':';
-  auto attrib_name = +attrib_name_chars;
-  auto value_attrib = attrib_name >> '=';
+  auto attrib_name = lexeme[+attrib_name_chars];
+  auto attrib_lit_style = lexeme[no_case[lit("style")]][is_style] >> '=';
+  auto attrib_normal = attrib_name[is_normal] >> '=';
+  auto attrib_name_options = attrib_lit_style | attrib_normal;
   auto bool_attrib = attrib_name;
+  // Attribute value finders
+  auto no_quote_chars = (char_ - (tag_end | '\'' | '"' | eoi | space));
   auto attrib_no_quotes =
       lexeme[raw[+no_quote_chars][get] >> (tag_end | space)];
   auto attrib_double_quotes =
       lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
   auto attrib_single_quotes =
       lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
-  auto attribute = (value_attrib >> (attrib_double_quotes |
-                                     attrib_single_quotes | attrib_no_quotes) |
-                    bool_attrib);
+  // Bringing all the attribute bits together
+  auto attribute =
+      (attrib_name_options >>
+           (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes)) |
+       bool_attrib;
+  // Bringing tags and attributes together
   return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
 }
 
@@ -265,7 +295,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
     }
   } else {
     while (pos != end) {
-      std::vector<boost::iterator_range<iterator>> paths;
+      std::vector<AttribRec<iterator>> paths;
       bool ok = parser::phrase_parse(pos, end, parser::getHTMLParser(paths),
                                      parser::space);
       if (!ok)
@@ -273,11 +303,39 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       if ((ok) && (!paths.empty())) {
         std::vector<Change> changes;
         changes.reserve(paths.size());
-        for (const auto &path : paths) {
-          Change change(handlePath(path));
-          if (!change.empty())
-            changes.emplace_back(std::move(change));
+        for (auto &attrib : paths) {
+          switch (attrib.type) {
+          case Normal: {
+            // This is a normal attribute; treat the whole thing as a path
+            Change change(handlePath(attrib.location));
+            if (!change.empty())
+              changes.emplace_back(std::move(change));
+            break;
+          }
+          case Style: {
+            // If we have a style attribute, parse through it again, searching
+            // for css paths, rather than treat it as a single path in itself.
+            auto attribPos = attrib.location.begin();
+            const auto attribEnd = attrib.location.end();
+            auto css_parser = parser::getCSSParser(attrib.location);
+            while (attribPos != attribEnd) {
+              bool ok = parser::phrase_parse(attribPos, attribEnd, css_parser,
+                                             parser::space);
+              if (!ok)
+                break;
+              Change change = handlePath(attrib.location);
+              if (!change.empty()) {
+                changes.emplace_back(std::move(change));
+              }
+            }
+            break;
+          }
+          };
         }
+        // Now that all parsing is done for this tag, process the generated changes.
+        // We have to do this afterwards because issuing the bucket events
+        // can invalidate the iterators, and we can't have that half way through
+        // parsing
         switch (changes.size()) {
         case 1:
           operateOnBuckets(changes.front());
@@ -297,6 +355,9 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
           auto in = changes.front().path.begin();
           auto out = std::back_inserter(newTagInnards);
           for (Change &change : changes) {
+            using namespace std;
+            std::string tmp(change.path.begin(), change.path.end());
+            cout << "Processing change: path(" << tmp << ") - how much to cut(" << change.howMuchToCut << ") - newData(" << change.newData << ")" << endl;
             // Copy up to the beginning of the next change (first time it will
             // do nothing)
             while (in != change.path.begin())
@@ -309,7 +370,19 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
           compositeChange.howMuchToCut =
               std::distance(compositeChange.path.begin(),
                             compositeChange.path.end()) -
-              changes.back().howMuchToCut;
+              (std::distance(changes.back().path.begin(),
+                             changes.back().path.end()) -
+               changes.back().howMuchToCut -
+               ((!compositeChange.newData.empty()) &&
+                        (compositeChange.newData.back() == '/') &&
+                        (*compositeChange.path.end() == '/')
+                    ? 0
+                    : 1));
+          using namespace std;
+          std::string tmp(compositeChange.path.begin(), compositeChange.path.end());
+          cout << "Composite change: path(" << tmp << ") - how much to cut("
+               << compositeChange.howMuchToCut << ") - newData("
+               << compositeChange.newData << ")" << endl;
           operateOnBuckets(compositeChange);
         }
         };

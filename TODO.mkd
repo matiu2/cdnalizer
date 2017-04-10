@@ -1,10 +1,6 @@
 # Bettur URL finding
 
-## css: 
-
- * only grab stuff starting with 'url'
-
-## html: find inline CSS and parse it
+## html: Find inline CSS and parse it
 
     <style>
     h1 {color:red;}

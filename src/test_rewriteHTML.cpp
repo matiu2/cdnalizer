@@ -99,10 +99,13 @@ go_bandit([]() {
     new_blocks.clear();
   });
 
+  after_each([&](){
+    //std::cout << "Log: " << log.str() << std::endl;
+  });
+
   // Returns true if nothing is changed after running doRewrite
   auto ensureNoChange = [&](const std::string &data, bool isCSS = false) {
     Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, isCSS);
-    std::cout << "Log: " << log.str() << std::endl;
     AssertThat(end, Is().EqualTo(data.cend()));
     AssertThat(unchanged_blocks, HasLength(1));
     auto block = unchanged_blocks.at(0);
@@ -306,6 +309,31 @@ go_bandit([]() {
 
   });
 
+  it("9. inline style tags", [&]() {
+    const std::string data(
+        R"--(junky bits <A boolean style="background-image: url('/images/happy.jpg'); filter: url('/images/filter.css');" check_something_else>click here</a>)--");
+    Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
+    AssertThat(end, Is().EqualTo(data.cend()));
+
+    AssertThat(unchanged_blocks, HasLength(2));
+
+    // Unchanged: "junky bits <A boolean style="background-image: url('"
+    auto block = unchanged_blocks.at(0);
+    AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
+                                                   data.cbegin() + 52}));
+    // New Data: "http://cdn.supa.ws/imgs"
+    auto new_block = new_blocks.at(0);
+    SequencedNewData expected =
+        SequencedNewData{2, "http://cdn.supa.ws/imgs/happy.jpg'); filter: "
+                            "url('http://cdn.supa.ws/imgs"};
+    AssertThat(new_block, Equals(expected));
+
+    // Unchanged: --filter.css');" check_something_else>click here</a>--
+    block = unchanged_blocks.at(1);
+    AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 94,
+                                                   data.cbegin() + 144}));
+
+  });
 });
 
 int main(int argc, char **argv) { return bandit::run(argc, argv); }
