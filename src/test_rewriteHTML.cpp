@@ -251,36 +251,57 @@ go_bandit([]() {
     cfg.addPath("/blog/images", "http://cdn.supa.ws/blog/imags");
     Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
     AssertThat(end, Is().EqualTo(data.cend()));
-    AssertThat(unchanged_blocks, HasLength(3));
+    AssertThat(unchanged_blocks, HasLength(5));
+
+    size_t sequence = 1;
+    size_t unchangedIndex = 0;
+    size_t newBlockIndex = 0;
 
     // Unchanged: "<a href="
-    auto block = unchanged_blocks.at(0);
-    AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
-                                                   data.cbegin() + 9}));
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin(),
+                                            data.cbegin() + 9}));
 
-    // New Data: The inside of the tag up until the last path bit of the last attribute
-    AssertThat(new_blocks, HasLength(2));
-    SequencedNewData new_block = new_blocks.at(0);
+    // New Data: The inside of the tag up until the last path bit of the last
+    // attribute
+    AssertThat(new_blocks, HasLength(4));
+    AssertThat(new_blocks.at(newBlockIndex++),
+               Equals(SequencedNewData{sequence++,
+                                       R"(http://cdn.supa.ws/blog/imags)"}));
+
+    // Unchanged: 'a.gif" other_attrib='
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 15,
+                                            data.cbegin() + 36}));
+
+    // New Data:
+    AssertThat(new_blocks.at(newBlockIndex++),
+               Equals(SequencedNewData{sequence++,
+                                       R"(http://cdn.supa.ws/blog/imags)"}));
+
+    // Unchanged: 'b.gif singles='
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 48,
+                                            data.cbegin() + 64}));
+
+    // New Data: "http://cdn.supa.ws/blog/imags"
     AssertThat(
-        new_block,
-        Equals(SequencedNewData{
-            2,
-            R"(http://cdn.supa.ws/blog/imags/a.gif" other_attrib=http://cdn.supa.ws/blog/imags/b.gif singles='http://cdn.supa.ws/blog/imags)"}));
+        new_blocks.at(newBlockIndex++),
+        Equals(SequencedNewData{sequence++, "http://cdn.supa.ws/blog/imags"}));
 
     // Unchanged: '/c.gif"><img src='
-    block = unchanged_blocks.at(1);
-    AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 70,
-                                                   data.cbegin() + 88}));
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 70,
+                                            data.cbegin() + 88}));
 
     // New Data: "http://cdn.supa.ws/imgs"
-    new_block = new_blocks.at(1);
-    SequencedNewData expected = SequencedNewData{4, "http://cdn.supa.ws/imgs"};
-    AssertThat(new_block, Equals(expected));
+    AssertThat(new_blocks.at(newBlockIndex++),
+               Equals(SequencedNewData{sequence++, "http://cdn.supa.ws/imgs"}));
 
     // Unchanged: '/bad.link" />Bad location</a>'
-    block = unchanged_blocks.at(2);
-    AssertThat(block, Equals(SequencedIteratorPair{5, data.cbegin() + 95,
-                                                   data.cend()}));
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 95,
+                                            data.cend()}));
   });
 
   it("8. Handles boolean tags", [&]() {
@@ -315,23 +336,36 @@ go_bandit([]() {
     Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
     AssertThat(end, Is().EqualTo(data.cend()));
 
-    AssertThat(unchanged_blocks, HasLength(2));
+    size_t sequence = 1;
+    size_t unchangedIndex = 0;
+    size_t newBlockIndex = 0;
+
+    AssertThat(unchanged_blocks, HasLength(3));
 
     // Unchanged: "junky bits <A boolean style="background-image: url('"
-    auto block = unchanged_blocks.at(0);
-    AssertThat(block, Equals(SequencedIteratorPair{1, data.cbegin(),
-                                                   data.cbegin() + 52}));
-    // New Data: "http://cdn.supa.ws/imgs"
-    auto new_block = new_blocks.at(0);
-    SequencedNewData expected =
-        SequencedNewData{2, "http://cdn.supa.ws/imgs/happy.jpg'); filter: "
-                            "url('http://cdn.supa.ws/imgs"};
-    AssertThat(new_block, Equals(expected));
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin(),
+                                            data.cbegin() + 52}));
 
-    // Unchanged: --filter.css');" check_something_else>click here</a>--
-    block = unchanged_blocks.at(1);
-    AssertThat(block, Equals(SequencedIteratorPair{3, data.cbegin() + 94,
-                                                   data.cbegin() + 144}));
+    // New Data: "http://cdn.supa.ws/imgs"
+    AssertThat(new_blocks.at(newBlockIndex++),
+               Equals(SequencedNewData{sequence++, "http://cdn.supa.ws/imgs"}));
+
+    // Unchanged: --happy.jpg'); filter: url('--
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 59,
+                                            data.cbegin() + 59 + 27}));
+
+    // New Data: "http://cdn.supa.ws/imgs"
+    AssertThat(new_blocks.at(newBlockIndex++),
+               Equals(SequencedNewData{sequence++, "http://cdn.supa.ws/imgs"}));
+
+
+    // Unchanged: --happy.jpg'); filter: url('--
+    AssertThat(unchanged_blocks.at(unchangedIndex++),
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 93,
+                                            data.cbegin() + 144}));
+
 
   });
 });
