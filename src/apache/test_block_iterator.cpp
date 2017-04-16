@@ -1,6 +1,9 @@
 /// Makes an iterator derived from Abstract Block Iterator, and makes sure it is fast
 
 #include "AbstractBlockIterator.hpp"
+#include "../Config.hpp"
+#include "../Rewriter.hpp"
+#include "../Rewriter_impl.hpp"
 
 #include <list>
 #include <string>
@@ -53,15 +56,16 @@ void testSmallBlocks() {
   auto in = input.begin();
   size_t i = 0;
   constexpr size_t blockSize(3);
-  std::string written;
+  std::string copied;
   while (i < input.size())  {
     Block out(blocks);
     auto inc = std::min(blockSize, input.size() - i);
     std::copy_n(in, inc, std::back_inserter(out.data()));
-    std::copy_n(in, inc, std::back_inserter(written));
+    std::copy_n(in, inc, std::back_inserter(copied));
     i += inc;
     in += inc;
   }
+
   // Now see if we can print it out
   std::string test_out;
   Iterator test_in(Block(blocks, blocks.begin()), blocks.front().begin());
@@ -69,8 +73,35 @@ void testSmallBlocks() {
   std::copy(test_in, end_in, std::back_inserter(test_out));
 
   using namespace std;
-  cout << "Original data:\n    " << input << "\nCopied data:\n    " << written
+  cout << "Original data:\n    " << input << "\nCopied data:\n    " << copied
        << "\nRecreated data:\n    " << test_out << std::endl;
+
+  assert(input == copied);
+  assert(input == test_out);
+
+  // Test random access
+  auto start = test_out.begin();
+  cout << "start: " << *start << endl;
+  assert(*start == 'j');
+  auto A = start + 12;
+  cout << "A: " << *A << endl;
+  assert(*A == 'A');
+  auto b = A - 6;
+  cout << "b: " << *b << endl;
+  assert(*b == 'b');
+  std::string bits;
+  std::copy_n(b, 4, std::back_inserter(bits));
+  cout << "bits: " << bits << endl;
+  assert(bits == "bits");
+
+  // Now see if we can parse it
+  /*
+  std::string location("/blog");
+  cdnalizer::Config cfg;
+  auto unchanged = [&](
+  cdnalizer::rewriteHTML(location, cfg, test_in, end_in, unchanged, newData,
+                                isCSS);
+  */
 }
 
 int main(int, char **) { 
