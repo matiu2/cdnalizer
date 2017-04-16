@@ -93,7 +93,7 @@ struct AbstractBlockIterator
         } else {
           // If we need to back before this block, blow up, because we don't
           // support that
-          std::runtime_error("Can't go back to a previous block. Apache has "
+          throw std::runtime_error("Can't go back to a previous block. Apache has "
                              "already sent it to the user");
         }
       }

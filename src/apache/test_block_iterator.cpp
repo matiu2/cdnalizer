@@ -55,7 +55,7 @@ void testSmallBlocks() {
   List blocks;
   auto in = input.begin();
   size_t i = 0;
-  constexpr size_t blockSize(3);
+  constexpr size_t blockSize(5);
   std::string copied;
   while (i < input.size())  {
     Block out(blocks);
@@ -80,16 +80,17 @@ void testSmallBlocks() {
   assert(input == test_out);
 
   // Test random access
-  auto start = test_out.begin();
+  auto start = test_in;
   cout << "start: " << *start << endl;
   assert(*start == 'j');
   auto A = start + 12;
   cout << "A: " << *A << endl;
   assert(*A == 'A');
-  auto b = A - 6;
-  cout << "b: " << *b << endl;
-  assert(*b == 'b');
+  auto lt = A - 1;
+  cout << "lt: " << *lt << endl;
+  assert(*lt == '<');
   std::string bits;
+  auto b = start + 6;
   std::copy_n(b, 4, std::back_inserter(bits));
   cout << "bits: " << bits << endl;
   assert(bits == "bits");
