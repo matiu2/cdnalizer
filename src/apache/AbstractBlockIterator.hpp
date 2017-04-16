@@ -7,6 +7,7 @@
  **/
 
 #include <iterator>
+#include <stdexcept>
 
 namespace cdnalizer {
 namespace apache {
@@ -36,7 +37,8 @@ struct AbstractBlockIterator
   AbstractBlockIterator() = default;
   AbstractBlockIterator(const Block &block, SubIterator position = {})
       : parent_type{}, block{block},
-        position{position ? position : block.begin()} {}
+        position{position == SubIterator() ? position
+                                                         : block.begin()} {}
   AbstractBlockIterator(const type &other) = default;
   type &operator=(const type &other) = default;
   reference operator*() const { return *position; }

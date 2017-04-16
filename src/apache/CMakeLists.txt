@@ -15,6 +15,9 @@ add_library(${PROJECT_NAME} SHARED mod_cdnalizer.cpp config.cpp filter.cpp)
 target_link_libraries(${PROJECT_NAME} base ${APR_LIBRARIES})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 
+add_executable(test_block_iterator test_block_iterator.cpp)
+add_test(test_block_iterator test_block_iterator)
+
 INSTALL(
     TARGETS ${PROJECT_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cdnalizer/
