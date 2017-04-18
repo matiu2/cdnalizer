@@ -8,6 +8,7 @@
 
 #include <iterator>
 #include <stdexcept>
+#include <cassert>
 
 namespace cdnalizer {
 namespace apache {
@@ -58,6 +59,20 @@ struct AbstractBlockIterator
     operator++(*this);
     return result;
   }
+  type &operator--() {
+    if (position == block.begin()) {
+      --block;
+      assert(!block.isSentinel());
+      position = block.end();
+    }
+    --position;
+    return *this;
+  }
+  type operator--(int) {
+    type result(*this);
+    operator--(this);
+    return result;
+  }
   // Random iterator implementation
   type &operator+=(long count) {
     // Assuming base iterator is random access
@@ -83,18 +98,17 @@ struct AbstractBlockIterator
   }
   type &operator-=(long count) {
     if (count > 0) {
-      // How far til the beginning of the block
-      long bob = position - block.begin();
       while (count != 0) {
-        if (bob > count) {
+        // How far til the beginning of the block
+        long db = position - block.begin();
+        if (db >= count) {
           // If the target is inside this block, just move there
-          position += -count;
+          position -= count;
           break;
         } else {
-          // If we need to back before this block, blow up, because we don't
-          // support that
-          throw std::runtime_error("Can't go back to a previous block. Apache has "
-                             "already sent it to the user");
+          count -= db;
+          --block;
+          position = block.end();
         }
       }
     }

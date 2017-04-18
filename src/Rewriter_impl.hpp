@@ -1,6 +1,7 @@
 #pragma once
 /**
  * © Copyright 2014 Matthew Sherborne. All Rights Reserved.
+ * © Copyright 2017 Matthew Sherborne. All Rights Reserved.
  * License: Apache License, Version 2.0 (See LICENSE.txt)
  **/
 #include "Rewriter.hpp"
@@ -21,6 +22,17 @@ namespace cdnalizer {
 enum attrib_type { Normal, Style };
 
 namespace parser {
+
+/// A filter to remove .php or .pl files from being CDNalized
+template <typename Iter>
+bool checkPath(boost::iterator_range<Iter> path) {
+  auto i = path.end();
+  --i;
+  while (i != path.begin()) {
+
+  }
+
+}
 
 using namespace boost::spirit::x3;
 

@@ -29,10 +29,23 @@ struct Block {
     ++result.iter;
     return result;
   }
+  Block prev() {
+    Block result(list, iter);
+    --result.iter;
+    return result;
+  }
   std::string::iterator begin() const { return iter->begin(); }
   std::string::iterator end() const { return iter->end(); }
   Block operator++(int) { return next(); }
-  Block& operator++() { ++iter; return *this; }
+  Block operator--(int) { return prev(); }
+  Block &operator++() {
+    ++iter;
+    return *this;
+  }
+  Block &operator--() {
+    --iter;
+    return *this;
+  }
   bool isSentinel() const { return iter == list.end(); }
   bool operator==(const Block& other) const {
     return (other.list == list) && (other.iter == iter);
@@ -55,7 +68,7 @@ void testSmallBlocks() {
   List blocks;
   auto in = input.begin();
   size_t i = 0;
-  constexpr size_t blockSize(5);
+  constexpr size_t blockSize(2);
   std::string copied;
   while (i < input.size())  {
     Block out(blocks);
@@ -90,10 +103,14 @@ void testSmallBlocks() {
   cout << "lt: " << *lt << endl;
   assert(*lt == '<');
   std::string bits;
-  auto b = start + 6;
+  auto b = A - 6;
   std::copy_n(b, 4, std::back_inserter(bits));
   cout << "bits: " << bits << endl;
   assert(bits == "bits");
+  auto s = std::make_reverse_iterator(A - 2);
+  std::string stib;
+  std::copy(s, make_reverse_iterator(b), std::back_inserter(stib));
+  cout << "stib: " << stib << endl;
 
   // Now see if we can parse it
   /*
