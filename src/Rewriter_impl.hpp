@@ -14,6 +14,9 @@
 #include <iterator> // find search
 
 #include <boost/spirit/home/x3.hpp>
+#include <boost/hana/if.hpp>
+#include <boost/hana/equal.hpp>
+#include <boost/hana/type.hpp>
 
 namespace cdnalizer {
 
@@ -22,17 +25,6 @@ namespace cdnalizer {
 enum attrib_type { Normal, Style };
 
 namespace parser {
-
-/// A filter to remove .php or .pl files from being CDNalized
-template <typename Iter>
-bool checkPath(boost::iterator_range<Iter> path) {
-  auto i = path.end();
-  --i;
-  while (i != path.begin()) {
-
-  }
-
-}
 
 using namespace boost::spirit::x3;
 
@@ -90,7 +82,53 @@ auto getHTMLParser(
   return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
 }
 
+/// Returns a parser for finding if a path is server only (.php / .pl)
+/// This parser is faster than 'getPathParser', but the iterator must support reverse iteration
+auto getFastPathParser() {
+  // This parser exepcts a reverse iterator (from the end of the path back to
+  // the beginning) because if we find that the line ends with '.php' straight
+  // away, we give a fast result.
+  // We also want to return true for stuff like: /some/url
+  auto php = lit("php."); // Reverse of '.php'
+  auto pl = lit("lp.");   // Reverse of '.pl'
+  auto py = lit("yp.");   // Reverse of '.py'
+  auto extensions = php | pl | py;
+  return extensions | +(char_ - (lit('?') | '/')) >> '?' >> extensions;
+}
+
+/// Returns a parser for finding if a path is server only (.php / .pl)
+auto getPathParser() {
+  auto php = lit(".php"); // Reverse of '.php'
+  auto pl = lit(".pl");   // Reverse of '.pl'
+  auto py = lit(".py");   // Reverse of '.py'
+  auto extensions = php | pl | py;
+  return extensions >> ('?' | eoi);
+}
+
+
 } /* parser  */
+
+/// A filter to remove .php or .pl files from being CDNalized
+/// Returns true if the path should be served from the CDN
+template <typename Iter>
+bool checkPath(boost::iterator_range<Iter> path) {
+  auto begin = std::make_reverse_iterator(path.end());
+  --begin;
+  auto end = std::make_reverse_iterator(path.begin());
+  auto supportsReverse = boost::hana::is_valid(
+      [](auto &&it) -> decltype(*--it) {});
+  auto isExecutable = boost::hana::if_(
+      supportsReverse(begin),
+      [](auto begin, auto end) {
+        return parser::phrase_parse(begin, end, parser::getPathParser(),
+                                    parser::space);
+      },
+      [](auto begin, auto end) {
+        return parser::phrase_parse(begin, end, parser::getPathParser(),
+                                    parser::space);
+      });
+  return !isExecutable(begin, end);
+}
 
 template <typename iterator>
 iterator rewriteHTML(const std::string &server_url, const std::string &location,
@@ -299,6 +337,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
 
   // Find a path to replace in the html/css
   iterator pos = start;
+
   // See if we're looking for css urls or html/xml
   if (isCSS) {
     while (pos != end) {
@@ -306,7 +345,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       bool ok = parser::phrase_parse(pos, end, parser::getCSSParser(path),
                                      parser::space);
       if (ok) {
-        operateOnBuckets(handlePath({path.begin(), path.end()}));
+        if (checkPath(path))
+          operateOnBuckets(handlePath({path.begin(), path.end()}));
       } else
         break;
     }
@@ -317,10 +357,12 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
           switch (type) {
           case Normal: {
             // This is a normal attribute; treat the whole thing as a path
-            Change change(handlePath(value));
-            if (!change.empty())
-              pos = operateOnBuckets(std::move(
-                  change)); // Set the new pos, because we are mid-parse
+            if (checkPath(value)) {
+              Change change(handlePath(value));
+              if (!change.empty())
+                pos = operateOnBuckets(std::move(
+                    change)); // Set the new pos, because we are mid-parse
+            }
             break;
           }
           case Style: {
@@ -328,7 +370,8 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
             // for css paths, rather than treat it as a single path in itself.
             auto attribPos = value.begin();
             auto attribEnd = value.end();
-            auto css_parser = parser::getCSSParser(value);
+            decltype(value) path;
+            auto css_parser = parser::getCSSParser(path);
             assert(pos == attribEnd); // Assume pos is the same as attribEnd
 
             while (attribPos != attribEnd) {
@@ -336,7 +379,11 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                                              parser::space);
               if (!ok)
                 break;
-              Change change = handlePath(value);
+
+              if (!checkPath(path))
+                continue;
+
+              Change change = handlePath(path);
               if (!change.empty()) {
                 // After operating on buckets, it will return
                 // change.path.end() and all other iterators will be invalid,
