@@ -102,7 +102,7 @@ auto getPathParser() {
   auto pl = lit(".pl");   // Reverse of '.pl'
   auto py = lit(".py");   // Reverse of '.py'
   auto extensions = php | pl | py;
-  return extensions >> ('?' | eoi);
+  return +(char_ - (lit('.') | eoi | '?')) >> extensions >> ('?' | eoi);
 }
 
 
@@ -112,22 +112,21 @@ auto getPathParser() {
 /// Returns true if the path should be served from the CDN
 template <typename Iter>
 bool checkPath(boost::iterator_range<Iter> path) {
-  auto begin = std::make_reverse_iterator(path.end());
-  --begin;
-  auto end = std::make_reverse_iterator(path.begin());
   auto supportsReverse = boost::hana::is_valid(
       [](auto &&it) -> decltype(*--it) {});
   auto isExecutable = boost::hana::if_(
-      supportsReverse(begin),
-      [](auto begin, auto end) {
-        return parser::phrase_parse(begin, end, parser::getPathParser(),
-                                    parser::space);
+      supportsReverse(path.begin()),
+      [](auto path) {
+        auto begin = std::make_reverse_iterator(path.end());
+        auto end = std::make_reverse_iterator(path.begin());
+        return parser::phrase_parse<decltype(begin)>(
+            begin, end, parser::getFastPathParser(), parser::space);
       },
-      [](auto begin, auto end) {
-        return parser::phrase_parse(begin, end, parser::getPathParser(),
-                                    parser::space);
+      [](auto path) {
+        return parser::phrase_parse(path.begin(), path.end(),
+                                    parser::getPathParser(), parser::space);
       });
-  return !isExecutable(begin, end);
+  return !isExecutable(path);
 }
 
 template <typename iterator>

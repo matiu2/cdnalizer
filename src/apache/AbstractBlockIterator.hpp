@@ -10,6 +10,11 @@
 #include <stdexcept>
 #include <cassert>
 
+#include <boost/hana/if.hpp>
+#include <boost/hana/equal.hpp>
+#include <boost/hana/type.hpp>
+#include <boost/hana/core/when.hpp>
+
 namespace cdnalizer {
 namespace apache {
 
@@ -61,9 +66,21 @@ struct AbstractBlockIterator
   }
   type &operator--() {
     if (position == block.begin()) {
-      --block;
-      assert(!block.isSentinel());
-      position = block.end();
+      auto canDecBlock =
+          boost::hana::is_valid([](auto &&b) -> decltype(--b) {});
+      auto decBlock = boost::hana::if_(canDecBlock(block),
+                                       [this](auto &block) {
+                                         --block;
+                                         assert(!block.isSentinel());
+                                         position = block.end();
+                                       },
+                                       [this](auto &) {
+                                         throw std::logic_error(
+                                             "Can't decrement this iterator "
+                                             "past the beginning of the "
+                                             "block");
+                                       });
+      decBlock(block);
     }
     --position;
     return *this;

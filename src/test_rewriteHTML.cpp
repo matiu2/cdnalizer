@@ -330,7 +330,7 @@ go_bandit([]() {
 
   });
 
-  it("9. inline style tags", [&]() {
+  it("9. rewrites inline style tags", [&]() {
     const std::string data(
         R"--(junky bits <A boolean style="background-image: url('/images/happy.jpg'); filter: url('/images/filter.css');" check_something_else>click here</a>)--");
     Iterator end = doRewrite(data.cbegin(), data.cend(), cfg, false);
@@ -368,6 +368,36 @@ go_bandit([]() {
 
 
   });
+
+  it("10. doesn't rewrite php files", [&]() {
+    const std::string data(
+        R"--(junky bits 
+              <img src="/images/bad.php" /> Shouldn't be rewritten because it ends .php
+              <img src="/images/bad2.php?x=2" /> Shouldn't be rewritten because it calls bad2.php passing get parameters
+              <img src="/images/good.jpg" />  Should be rewritten because it's in /images/folder
+              <img src="/images/good.jpg?x=.php&y=1" />  Should be rewritten because it's in /images/folder - it should ignore the .php
+              <img src="/images/good.jpg?x=.php" />  Special bug - in favor of speed, we assume it's a .php because it ends in that. It's unlikely that someone's going to pass get parameters to a real jpg
+              <A boolean style="background-image: url('/images/happy.jpg'); filter: url('/images/filter.css');" check_something_else>both urls should be rewritten</a>
+              <A boolean style="background-image: url('/images/happy.php'); filter: url('/images/filter.css.php');" check_something_else>Both should not be rewritten</a>)--");
+    const std::string expected(
+        R"--(junky bits 
+              <img src="/images/bad.php" /> Shouldn't be rewritten because it ends .php
+              <img src="/images/bad2.php?x=2" /> Shouldn't be rewritten because it calls bad2.php passing get parameters
+              <img src="http://cdn.supa.ws/imgs/good.jpg" />  Should be rewritten because it's in /images/folder
+              <img src="http://cdn.supa.ws/imgs/good.jpg?x=.php&y=1" />  Should be rewritten because it's in /images/folder - it should ignore the .php
+              <img src="/images/good.jpg?x=.php" />  Special bug - in favor of speed, we assume it's a .php because it ends in that. It's unlikely that someone's going to pass get parameters to a real jpg
+              <A boolean style="background-image: url('http://cdn.supa.ws/imgs/happy.jpg'); filter: url('http://cdn.supa.ws/imgs/filter.css');" check_something_else>both urls should be rewritten</a>
+              <A boolean style="background-image: url('/images/happy.php'); filter: url('/images/filter.css.php');" check_something_else>Both should not be rewritten</a>)--");
+    std::string whatWeGot;
+    RangeEvent<Iterator> unchanged = [&](auto start, auto end) {
+      std::copy(start, end, std::back_inserter(whatWeGot));
+      return end;
+    };
+    DataEvent newData = [&](std::string data) { whatWeGot.append(data); };
+    auto newEnd = cdnalizer::rewriteHTML(location, cfg, data.begin(),
+                                         data.end(), unchanged, newData, false);
+    AssertThat(whatWeGot, Equals(expected));
+    });
 });
 
 int main(int argc, char **argv) { return bandit::run(argc, argv); }
