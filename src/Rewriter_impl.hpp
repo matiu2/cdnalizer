@@ -57,9 +57,12 @@ auto getHTMLParser(
 
   // Actual parsers //
   auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
+  auto xml_thing = lit("<!") >> +(char_ - (lit(">") | eoi)) >> lit(">");
+  auto comment = lit("<!--") >> +(char_ - (lit("-->") | eoi)) >> lit("-->");
+  auto end_tag = lexeme[lit("</") >> +alnum >> '>'];
   auto tag_end = lit('>') | lit("/>");
   // Attribute name finders
-  auto attrib_name_chars = alnum | '_' | ':';
+  auto attrib_name_chars = alnum | '_' | ':' | '-';
   auto attrib_name = lexeme[+attrib_name_chars];
   auto attrib_lit_style = lexeme[no_case[lit("style")]][is_style] >> '=';
   auto attrib_normal = attrib_name[is_normal] >> '=';
@@ -76,14 +79,18 @@ auto getHTMLParser(
   // Bringing all the attribute bits together
   auto attribute =
       (attrib_name_options >>
-           (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes)) |
-       bool_attrib;
+       (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes)) |
+      bool_attrib;
   // Bringing tags and attributes together
-  return *(char_ - (tag_start | eoi)) >> tag_start >> +attribute >> tag_end;
+  auto a_tag = tag_start >> +attribute >> tag_end;
+  auto no_attributes = lexeme[lit('<') >> +alnum >> '>'];
+  auto not_a_tag = (end_tag | comment | xml_thing | no_attributes);
+  return *(char_ - (lit('<') | eoi)) >> (not_a_tag | a_tag | eoi);
 }
 
 /// Returns a parser for finding if a path is server only (.php / .pl)
-/// This parser is faster than 'getPathParser', but the iterator must support reverse iteration
+/// This parser is faster than 'getPathParser', but the iterator must support
+/// reverse iteration
 auto getFastPathParser() {
   // This parser exepcts a reverse iterator (from the end of the path back to
   // the beginning) because if we find that the line ends with '.php' straight
@@ -104,7 +111,6 @@ auto getPathParser() {
   auto extensions = php | pl | py;
   return +(char_ - (lit('.') | eoi | '?')) >> extensions >> ('?' | eoi);
 }
-
 
 } /* parser  */
 
