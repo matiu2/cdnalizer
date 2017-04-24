@@ -1,13 +1,12 @@
 # Bettur URL finding
 
-## html: Find inline CSS and parse it
+## Ignore HTML comments
 
-    <style>
-    h1 {color:red;}
-    p {color:blue;}
-    </style>
+<!-- ... -->
 
-  <div style="background: url(x.jpg)" />
+## Parse JS strings
+
+## Parse inline JS inside of HTML
 
 ## Base tag
 

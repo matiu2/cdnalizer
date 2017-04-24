@@ -75,9 +75,14 @@ public:
     /// Means we are the sentinel bucket; one past the end .. there is no more data to process
     bool isSentinel() const { return (bb == nullptr) || (_bucket == APR_BRIGADE_SENTINEL(bb)); }
     bool operator ==(const BucketWrapper& other) const {
+        // Assumes all iterators being compared are from the same bucket brigade.
+        assert(bb == other.bb);
         if (isSentinel() && other.isSentinel())
-            return true; // Assumes all iterators being compared are from the same bucket brigade.
-        return (bb == other.bb) && (_bucket == other._bucket);
+            return true; 
+        return (_bucket == other._bucket);
+    }
+    bool operator!=(const BucketWrapper &other) const {
+      return !(operator==(other));
     }
     /** Splits the bucket at @pos.
      *  If it fails, it leaves us unchanged.
@@ -105,8 +110,14 @@ public:
 struct Iterator : AbstractBlockIterator<const char*, BucketWrapper>  {
     using Base = AbstractBlockIterator<const char*, BucketWrapper>;
     Iterator() = default;
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, apr_bucket* bucket, char* position={}) : AbstractBlockIterator({bb, onFlush, bucket}, position) {}
-    Iterator(apr_bucket_brigade* bb, BucketWrapper::FlushHandler onFlush, char* position={}) : AbstractBlockIterator({bb, onFlush}, position) {}
+    Iterator(apr_bucket_brigade *bb, BucketWrapper::FlushHandler onFlush,
+             apr_bucket *bucket, char *position = {})
+        : AbstractBlockIterator({bb, onFlush, bucket}, position) {}
+    Iterator(apr_bucket_brigade *bb, BucketWrapper::FlushHandler onFlush)
+        : AbstractBlockIterator({bb, onFlush}) {}
+    Iterator(apr_bucket_brigade *bb, BucketWrapper::FlushHandler onFlush,
+             char *position)
+        : AbstractBlockIterator({bb, onFlush}, position) {}
     Iterator(const Iterator& other) = default;
     /// Splits the block at the current position.
     /// If succesful, we move to the beginnig of the next block after the split (data we point at stays the same)

@@ -119,7 +119,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // Is it CSS or HTML/XML ?
     bool isCSS(false);
     if ((filter->r) && (filter->r->content_type))
-      isCSS = strcmp(filter->r->content_type, "text/css");
+      isCSS = (strcmp(filter->r->content_type, "text/css") == 0);
 
     // Do the actual rewriting now: TODO: check the mime type for css/html
     Iterator tag_start =

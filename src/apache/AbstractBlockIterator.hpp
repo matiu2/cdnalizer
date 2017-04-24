@@ -41,16 +41,29 @@ struct AbstractBlockIterator
   SubIterator position;
 
   AbstractBlockIterator() = default;
-  AbstractBlockIterator(const Block &block, SubIterator position = {})
-      : parent_type{}, block{block},
-        position{position == SubIterator() ? position
-                                                         : block.begin()} {}
-  AbstractBlockIterator(const type &other) = default;
+  AbstractBlockIterator(const Block &block, SubIterator position)
+      : parent_type{}, block{block}, position{position} {}
+  AbstractBlockIterator(const Block &block)
+      : parent_type{}, block{block}, position{block.begin()} {}
+  AbstractBlockIterator(const type &other)
+      : block(other.block), position(other.position) {}
   type &operator=(const type &other) = default;
-  reference operator*() const { return *position; }
-  reference &operator*() { return *position; }
-  reference operator->() const { return *position; }
-  reference &operator->() { return *position; }
+  reference operator*() const {
+    assert(position != SubIterator());
+    return *position;
+  }
+  reference &operator*() {
+    assert(position != SubIterator());
+    return *position;
+  }
+  reference operator->() const {
+    assert(position != SubIterator());
+    return *position;
+  }
+  reference &operator->() {
+    assert(position != SubIterator());
+    return *position;
+  }
   type &operator++() {
     ++position;
     if (position == block.end()) {
@@ -139,7 +152,7 @@ struct AbstractBlockIterator
     type result(*this);
     return result -= count;
   }
-  difference_type operator-(const type& other) {
+  difference_type operator-(const type &other) {
     if (block == other.block) {
       return position - other.position;
     } else {
@@ -151,19 +164,20 @@ struct AbstractBlockIterator
         ++copy.block;
         copy.position = copy.block.begin();
         if (copy.isSentinel())
-          throw std::runtime_error("Couldn't find a distance between two iterators");
+          throw std::runtime_error(
+              "Couldn't find a distance between two iterators");
       }
       return count + (position - other.position);
     }
   }
-  
+
   bool operator==(const type &other) const {
     if (block.isSentinel() && other.block.isSentinel())
       return true;
     else
       return (block == other.block) && (position == other.position);
   }
-  bool operator!=(const type &other) const { return !(*this == other); }
+  bool operator!=(const type &other) const { return !(operator==(other)); }
   bool isAtStartOfBlock() const { return position == block.begin(); }
 };
 }
