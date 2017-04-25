@@ -1,0 +1,37 @@
+# Needs profiling
+
+I'm using the plugin on a production wordpress site, and finding that sometimes
+the speed is ok, and sometimes it seems to hang for some seconds.
+
+I need to profile it.
+
+# spirit x3 vs ragel
+
+Currently we're using [spirit x3](http://ciere.com/cppnow15/x3_docs/) for the
+parser, but I'm considering changing to
+[ragel](http://www.colm.net/open-source/ragel/) because it feels more
+transparent (less magic).
+
+I have a concern that maybe spirit is copying text (for its attribute parsing)
+and that may be what's slowing things down.  Apache bucket brigades are
+specially designed to 
+[not copy blocks of memory](http://www.apachetutor.org/dev/brigades).
+
+# More features to add
+
+Currently the parser handles
+
+ * html/xml
+   + <style>inner css</style>
+   + <any_tag any_attribute="/some/path" />
+   + <any_tag style="inner; css; url(/some/path);" />
+ * css files
+   + url('/some/path')
+
+I need to add support for java script. Should I just do:
+
+ * a horrible search and replace, treating each word as a potential path
+ * Treat any single string as a full path. eg: "/some/path/something.jpg";
+ * Treat each word inside of a string as a potential path. eg: "something /some/path/something.jpg something else";
+
+Should I switch to ragel first; should I profile first.
