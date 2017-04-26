@@ -36,7 +36,7 @@ auto getCSSParser(boost::iterator_range<Iterator> &out) {
   auto no_quote_path = raw[+(char_ - (lit(')') | eoi))][get];
   auto css_path = double_quoted_path | single_quoted_path | no_quote_path; 
   auto junk_before_path = +(char_ - ("url" | eoi));
-  return junk_before_path >> "url" >> '(' >> css_path >> ')';
+  return raw[junk_before_path >> "url" >> '(' >> css_path >> ')'];
 }
 
 /// @param onAttributeFound A function that will be called for each attribute
@@ -85,7 +85,7 @@ auto getHTMLParser(
   auto a_tag = tag_start >> +attribute >> tag_end;
   auto no_attributes = lexeme[lit('<') >> +alnum >> '>'];
   auto not_a_tag = (end_tag | comment | xml_thing | no_attributes);
-  return *(char_ - (lit('<') | eoi)) >> (not_a_tag | a_tag | eoi);
+  return raw[*(char_ - (lit('<') | eoi)) >> (not_a_tag | a_tag | eoi)];
 }
 
 /// Returns a parser for finding if a path is server only (.php / .pl)
@@ -100,7 +100,7 @@ auto getFastPathParser() {
   auto pl = lit("lp.");   // Reverse of '.pl'
   auto py = lit("yp.");   // Reverse of '.py'
   auto extensions = php | pl | py;
-  return extensions | +(char_ - (lit('?') | '/')) >> '?' >> extensions;
+  return raw[extensions | +(char_ - (lit('?') | '/')) >> '?' >> extensions];
 }
 
 /// Returns a parser for finding if a path is server only (.php / .pl)
@@ -109,7 +109,7 @@ auto getPathParser() {
   auto pl = lit(".pl");   // Reverse of '.pl'
   auto py = lit(".py");   // Reverse of '.py'
   auto extensions = php | pl | py;
-  return +(char_ - (lit('.') | eoi | '?')) >> extensions >> ('?' | eoi);
+  return raw[+(char_ - (lit('.') | eoi | '?')) >> extensions >> ('?' | eoi)];
 }
 
 } /* parser  */
