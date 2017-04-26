@@ -2,8 +2,8 @@
 
 So to profile it, in the end it was not too hard.
 
-  source /etc/apache2/envvars
-  valgrind --tool=callgrind /usr/sbin/apache2 -X
+    source /etc/apache2/envvars
+    valgrind --tool=callgrind /usr/sbin/apache2 -X
 
 Once it's loaded, valgrind creates callgrind creates 'callgrind.pid' in your local directory and a bunch of /tmp/vgdb* files.
 
