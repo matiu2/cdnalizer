@@ -1,0 +1,43 @@
+# Profiling complete
+
+So to profile it, in the end it was not too hard.
+
+  source /etc/apache2/envvars
+  valgrind --tool=callgrind /usr/sbin/apache2 -X
+
+Once it's loaded, valgrind creates callgrind creates 'callgrind.pid' in your local directory and a bunch of /tmp/vgdb* files.
+
+The trouble is that Apache drops from being 'root' down to 'www-data', which seems to drop valgrind too, so it can't write to the files that it created at the start.
+
+The trick ?
+
+    chmod 777 /tmp/vgdb* callgrind*
+
+After that callgrind can write the output files.
+
+# Profile outcome
+
+In kcachegrind it shows that 49% (of the 5 seconds (partially due to valgrind running) it takes to serve a static html file) is due to boost::spirit::x3's parsing. Digging a bit deeper it seems to be due to the parse_into_container function. I expect that it's trying to generate vectors and allocate memory out the whazoo while parsing.
+
+![kcachegrind output](https://github.com/matiu2/cdnalizer/blob/master/blog/Selection_117.png?raw=true)
+
+Switching to [ragel](http://www.colm.net/open-source/ragel/) will give us these benefits:
+
+ * Visible state machine output thanks to (graphviz)
+   + easier debugging by looking at the state machine pic
+ * Nice readable giant switch statements in loops (more transparent and easier to debug than boost::spirit innards)
+ * Hopefully more speed
+
+All I have to do now is rewrite all the parsing bits in ragel:
+
+ * CSS parser - Just looks for the url() function
+ * HTML parser - looks for <tags with_attributes="true"> 
+               - inline <style> tags
+               - inline <script language="text/javascript"> tags
+               - style attribute (where it switches to the CSS parser)
+               - onClick, etc attributes (where it switches to the JS parser)
+ * JS parser - just searches for "strings" and assumes the whole string is a path to be replaced.
+
+Everything related to JS doesn't exist in any form yet..
+
+Luckily I have a good amount of tests already written.
