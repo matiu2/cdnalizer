@@ -1,0 +1,52 @@
+So I made my first ragel state machine. It just parses:
+
+ * url(/some/url)
+ * url("/some/url")
+ * url('/some/url')
+
+Here's the ragel source:
+
+	%%{
+		machine css_url;
+		find_url = (any - 'u')*;
+		url_start = "url"  space*  '('  space*;
+		url_end = space*  ')';
+		single_quotes = "'"  (any - "'")+  "'";
+		double_quotes = '"'  (any - '"')+  '"';
+		no_quotes = (any - [)'"])+;
+		url_middle = single_quotes | double_quotes | no_quotes;
+		css_url := find_url  url_start  url_middle url_end;
+	}%%
+
+Here's the [ragel docs](http://www.colm.net/files/ragel/ragel-guide-6.10.pdf) to help understand it.
+
+ * find_url means zero or more of (any character except 'u')
+ * url_start is literally 'url' followed by zero or more white_space, then a literal '(', then zero or more whitespace characters.
+ * The '+' parts mean one or more.
+
+This is similar to what I alread had in boost::spirit::x3:
+
+	auto get = [&out](auto ctx) { out = _attr(ctx); };
+	auto double_quoted_path = lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
+	auto single_quoted_path = lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
+	auto no_quote_path = raw[+(char_ - (lit(')') | eoi))][get];
+	auto css_path = double_quoted_path | single_quoted_path | no_quote_path; 
+	auto junk_before_path = +(char_ - ("url" | eoi));
+	return raw[junk_before_path >> "url" >> '(' >> css_path >> ')'];
+
+I used this command to generate the state machine picture:
+
+	ragel -Vp css.ragel  | dot -Tpng -o /var/www/html/css.png
+
+And here's the output:
+
+	![css state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/css.png)
+
+Now all I have to do is:
+
+ * Make it generate c++ code
+ * Incorporate the build steps into cmake
+ * Maybe write some more tests
+ * Make and integrate the other state machines for
+   + html/xml
+   + js
