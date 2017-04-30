@@ -8,6 +8,7 @@
 
 #include "Config.hpp"
 #include "utils.hpp"
+#include "parser/css.hpp"
 
 #include <algorithm>
 #include <cctype>   // tolower
@@ -27,17 +28,6 @@ enum attrib_type { Normal, Style };
 namespace parser {
 
 using namespace boost::spirit::x3;
-
-template <typename Iterator>
-auto getCSSParser(boost::iterator_range<Iterator> &out) {
-  auto get = [&out](auto ctx) { out = _attr(ctx); };
-  auto double_quoted_path = lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
-  auto single_quoted_path = lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
-  auto no_quote_path = raw[+(char_ - (lit(')') | eoi))][get];
-  auto css_path = double_quoted_path | single_quoted_path | no_quote_path; 
-  auto junk_before_path = +(char_ - ("url" | eoi));
-  return raw[junk_before_path >> "url" >> '(' >> css_path >> ')'];
-}
 
 /// @param onAttributeFound A function that will be called for each attribute
 template <typename Iterator>
@@ -337,8 +327,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
       ++nextNoChangeStart;
 
     // Return the new end of path, so parsing can continue
-    return result;
-  };
+    return result; };
 
   // Find a path to replace in the html/css
   iterator pos = start;
@@ -346,14 +335,17 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
   // See if we're looking for css urls or html/xml
   if (isCSS) {
     while (pos != end) {
-      boost::iterator_range<iterator> path(pos, end);
-      bool ok = parser::phrase_parse(pos, end, parser::getCSSParser(path),
-                                     parser::space);
-      if (ok) {
-        if (checkPath(path))
-          operateOnBuckets(handlePath({path.begin(), path.end()}));
-      } else
-        break;
+      parser::parseCSS(pos, end, std::function<void(iterator, iterator)>([&](
+                                     iterator path_begin, iterator path_end) {
+                         auto path =
+                             boost::make_iterator_range(path_begin, path_end);
+                         if (!checkPath(path))
+                           return;
+                         Change change = handlePath(path);
+                         if (!change.empty()) {
+                           pos = operateOnBuckets(std::move(change));
+                         }
+                       }));
     }
   } else {
     std::function<void(attrib_type, boost::iterator_range<iterator>)>
@@ -375,36 +367,35 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
             // for css paths, rather than treat it as a single path in itself.
             auto attribPos = value.begin();
             auto attribEnd = value.end();
-            decltype(value) path;
-            auto css_parser = parser::getCSSParser(path);
             assert(pos == attribEnd); // Assume pos is the same as attribEnd
-
             while (attribPos != attribEnd) {
-              bool ok = parser::phrase_parse(attribPos, attribEnd, css_parser,
-                                             parser::space);
-              if (!ok)
-                break;
-
-              if (!checkPath(path))
-                continue;
-
-              Change change = handlePath(path);
-              if (!change.empty()) {
-                // After operating on buckets, it will return
-                // change.path.end() and all other iterators will be invalid,
-                // so we need to grab distances now
-                auto dist_to_attr_pos =
-                    std::distance(change.path.end(), attribPos);
-                auto dist_to_attr_end =
-                    std::distance(change.path.end(), attribEnd);
-                auto end_of_path = operateOnBuckets(std::move(change));
-                // All the other iterators are now invalid, because a bucket
-                // has been split
-                attribPos = attribEnd = pos = end_of_path;
-                std::advance(attribPos, dist_to_attr_pos);
-                std::advance(attribEnd, dist_to_attr_end);
-                pos = attribEnd;
-              }
+              parser::parseCSS(
+                  attribPos, attribEnd,
+                  std::function<void(iterator, iterator)>([&](
+                      iterator path_begin, iterator path_end) {
+                    auto path =
+                        boost::make_iterator_range(path_begin, path_end);
+                    if (!checkPath(path))
+                      return;
+                    Change change = handlePath(path);
+                    if (!change.empty()) {
+                      // After operating on buckets, it will return
+                      // change.path.end() and all other iterators will be
+                      // invalid, so we need to grab distances now
+                      auto dist_to_attr_pos =
+                          std::distance(change.path.end(), attribPos);
+                      auto dist_to_attr_end =
+                          std::distance(change.path.end(), attribEnd);
+                      auto end_of_path = operateOnBuckets(std::move(change));
+                      // All the other iterators are now invalid, because a
+                      // bucket
+                      // has been split
+                      attribPos = attribEnd = pos = end_of_path;
+                      std::advance(attribPos, dist_to_attr_pos);
+                      std::advance(attribEnd, dist_to_attr_end);
+                      pos = attribEnd;
+                    }
+                  }));
             }
             break;
           }

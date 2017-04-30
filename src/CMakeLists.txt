@@ -4,7 +4,9 @@ enable_testing()
 
 add_library(base STATIC Config.cpp)
 set_property(TARGET base PROPERTY COMPILE_FLAGS -fPIC) # Because it gets loaded into shared object libraries later
+add_dependencies(base parser_code_generated)
 
+add_subdirectory(parser)
 add_subdirectory(stream)
 add_subdirectory(standalone)
 add_subdirectory(apache)

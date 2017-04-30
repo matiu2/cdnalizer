@@ -394,8 +394,8 @@ go_bandit([]() {
       return end;
     };
     DataEvent newData = [&](std::string data) { whatWeGot.append(data); };
-    auto newEnd = cdnalizer::rewriteHTML(location, cfg, data.begin(),
-                                         data.end(), unchanged, newData, false);
+    cdnalizer::rewriteHTML(location, cfg, data.begin(), data.end(), unchanged,
+                           newData, false);
     AssertThat(whatWeGot, Equals(expected));
     });
 });
