@@ -13,7 +13,7 @@ In CMake we use `cmake_custom_command`, along with `add_custom_target` to make e
 
 Firstly we need to generate pretty pictures like this state machine:
 
-![css state machine](css_state_machine.png)
+![css state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/css_state_machine.png)
 
 To do this we use these two blocks in CMakeLists.txt
 
@@ -96,7 +96,7 @@ action rec_end {
 
 The first one is triggered when it finds the start of a path that may need rewriting, and the second is triggered at the end of that path. You can see them being triggered in the diagram at **/rec_start**  and **/rec_end**:
 
-![css state machine](css_state_machine.png)
+![css state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/css_state_machine.png)
 
 `rec_start` just copies the iterator/pointer so we know where the path started.
 
