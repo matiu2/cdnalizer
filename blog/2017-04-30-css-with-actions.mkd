@@ -17,21 +17,25 @@ Firstly we need to generate pretty pictures like this state machine:
 
 To do this we use these two blocks in CMakeLists.txt
 
-    # Update the blog directory with the latest css state machine pic
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png
-        PRE_BUILD
-        COMMAND ragel -Vp ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl | dot -Tpng -o ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png;
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+```cmake
+# Update the blog directory with the latest css state machine pic
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png
+    PRE_BUILD
+    COMMAND ragel -Vp ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl | dot -Tpng -o ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png;
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+```
 
 This tells CMake, "to make the file ../blog/css_state_machine.png, require css.machine.rl, and run this ragel command to generate it".
 
 Next we incorporate that into the build with this block:
 
-    add_custom_target(parser_visualization 
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png)
+```cmake
+add_custom_target(parser_visualization 
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../blog/css_state_machine.png)
+```
 
 Here we're adding a make target called `parser_visualization` which depends on the png above existing.
 
@@ -43,24 +47,29 @@ The other part of the dependency is generating [css.hpp](https://github.com/mati
 
 In [/src/parser/CMakeLists.txt](), we tell cmake how to create `css.hpp`:
 
-    # Generate css.hpp source from the ragel template
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
-        PRE_BUILD
-        COMMAND ragel -C -o ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl;
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+```cmake
+# Generate css.hpp source from the ragel template
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
+    PRE_BUILD
+    COMMAND ragel -C -o ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl;
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+```
 
 Then we add a target that depends on `css.hpp` existing, so if you build that target, and `css.hpp` is older than `css.hpp.rl` or `css.machine.rl`, it'll regenerate `css.hpp`.
 
-    add_custom_target(parser_code_generated
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp)
-
+```cmake
+add_custom_target(parser_code_generated
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp)
+```
 Finally we tie that custom_target in with the base library in [/src/CMakeLists.txt](https://github.com/matiu2/cdnalizer/blob/master/src/CMakeLists.txt#L7):
 
-    add_dependencies(base parser_code_generated)
+```cmake
+add_dependencies(base parser_code_generated)
+```
 
 # Code
 
@@ -75,13 +84,15 @@ and matches the states in the diagram, so you can see exactly where you are.
 
 I've added two actions to the state machine:
 
-    action rec_start {
-      css_start = p;
-    }
+```ragel
+action rec_start {
+  css_start = p;
+}
 
-    action rec_end {
-      path_found(css_start, p);
-    }
+action rec_end {
+  path_found(css_start, p);
+}
+```
 
 The first one is triggered when it finds the start of a path that may need rewriting, and the second is triggered at the end of that path. You can see them being triggered in the diagram at **/rec_start**  and **/rec_end**:
 
