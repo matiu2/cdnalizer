@@ -9,121 +9,19 @@
 #include "Config.hpp"
 #include "utils.hpp"
 #include "parser/css.hpp"
+#include "parser/path.hpp"
+#include "parser/html.hpp"
 
 #include <algorithm>
 #include <cctype>   // tolower
 #include <iterator> // find search
+#include <cassert>
 
-#include <boost/spirit/home/x3.hpp>
 #include <boost/hana/if.hpp>
 #include <boost/hana/equal.hpp>
 #include <boost/hana/type.hpp>
 
 namespace cdnalizer {
-
-// The type of an HTML attribute. For Normal attributes, we treate the whole
-// contents as a path. For Style attributes, we invoke the CSS parser.
-enum attrib_type { Normal, Style };
-
-namespace parser {
-
-using namespace boost::spirit::x3;
-
-/// @param onAttributeFound A function that will be called for each attribute
-template <typename Iterator>
-auto getHTMLParser(
-    std::function<void(attrib_type, boost::iterator_range<Iterator>)>
-        onAttributeFound) {
-
-  // Operations
-  attrib_type type(Normal);
-  auto is_style = [&type](const auto &) {
-    type = Style; };
-  auto is_normal = [&type](const auto &) {
-    type = Normal; };
-  auto get = [onAttributeFound, &type](const auto &ctx) {
-    onAttributeFound(type, _attr(ctx));
-  };
-
-  // Actual parsers //
-  auto tag_start = lexeme[lit('<') >> +alnum >> ' '];
-  auto xml_thing = lit("<!") >> +(char_ - (lit(">") | eoi)) >> lit(">");
-  auto comment = lit("<!--") >> +(char_ - (lit("-->") | eoi)) >> lit("-->");
-  auto end_tag = lexeme[lit("</") >> +alnum >> '>'];
-  auto tag_end = lit('>') | lit("/>");
-  // Attribute name finders
-  auto attrib_name_chars = alnum | '_' | ':' | '-';
-  auto attrib_name = lexeme[+attrib_name_chars];
-  auto attrib_lit_style = lexeme[no_case[lit("style")]][is_style] >> '=';
-  auto attrib_normal = attrib_name[is_normal] >> '=';
-  auto attrib_name_options = attrib_lit_style | attrib_normal;
-  auto bool_attrib = attrib_name;
-  // Attribute value finders
-  auto no_quote_chars = (char_ - (tag_end | '\'' | '"' | eoi | space));
-  auto attrib_no_quotes =
-      lexeme[raw[+no_quote_chars][get] >> (tag_end | space)];
-  auto attrib_double_quotes =
-      lit('"') >> raw[+(char_ - (lit('"') | eoi))][get] >> '"';
-  auto attrib_single_quotes =
-      lit('\'') >> raw[+(char_ - (lit('\'') | eoi))][get] >> '\'';
-  // Bringing all the attribute bits together
-  auto attribute =
-      (attrib_name_options >>
-       (attrib_double_quotes | attrib_single_quotes | attrib_no_quotes)) |
-      bool_attrib;
-  // Bringing tags and attributes together
-  auto a_tag = tag_start >> +attribute >> tag_end;
-  auto no_attributes = lexeme[lit('<') >> +alnum >> '>'];
-  auto not_a_tag = (end_tag | comment | xml_thing | no_attributes);
-  return raw[*(char_ - (lit('<') | eoi)) >> (not_a_tag | a_tag | eoi)];
-}
-
-/// Returns a parser for finding if a path is server only (.php / .pl)
-/// This parser is faster than 'getPathParser', but the iterator must support
-/// reverse iteration
-auto getFastPathParser() {
-  // This parser exepcts a reverse iterator (from the end of the path back to
-  // the beginning) because if we find that the line ends with '.php' straight
-  // away, we give a fast result.
-  // We also want to return true for stuff like: /some/url
-  auto php = lit("php."); // Reverse of '.php'
-  auto pl = lit("lp.");   // Reverse of '.pl'
-  auto py = lit("yp.");   // Reverse of '.py'
-  auto extensions = php | pl | py;
-  return raw[extensions | +(char_ - (lit('?') | '/')) >> '?' >> extensions];
-}
-
-/// Returns a parser for finding if a path is server only (.php / .pl)
-auto getPathParser() {
-  auto php = lit(".php"); // Reverse of '.php'
-  auto pl = lit(".pl");   // Reverse of '.pl'
-  auto py = lit(".py");   // Reverse of '.py'
-  auto extensions = php | pl | py;
-  return raw[+(char_ - (lit('.') | eoi | '?')) >> extensions >> ('?' | eoi)];
-}
-
-} /* parser  */
-
-/// A filter to remove .php or .pl files from being CDNalized
-/// Returns true if the path should be served from the CDN
-template <typename Iter>
-bool checkPath(boost::iterator_range<Iter> path) {
-  auto supportsReverse = boost::hana::is_valid(
-      [](auto &&it) -> decltype(*--it) {});
-  auto isExecutable = boost::hana::if_(
-      supportsReverse(path.begin()),
-      [](auto path) {
-        auto begin = std::make_reverse_iterator(path.end());
-        auto end = std::make_reverse_iterator(path.begin());
-        return parser::phrase_parse<decltype(begin)>(
-            begin, end, parser::getFastPathParser(), parser::space);
-      },
-      [](auto path) {
-        return parser::phrase_parse(path.begin(), path.end(),
-                                    parser::getPathParser(), parser::space);
-      });
-  return !isExecutable(path);
-}
 
 template <typename iterator>
 iterator rewriteHTML(const std::string &server_url, const std::string &location,
@@ -339,7 +237,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                                      iterator path_begin, iterator path_end) {
                          auto path =
                              boost::make_iterator_range(path_begin, path_end);
-                         if (!checkPath(path))
+                         if (!parser::isPathStatic(path))
                            return;
                          Change change = handlePath(path);
                          if (!change.empty()) {
@@ -348,21 +246,20 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                        }));
     }
   } else {
-    std::function<void(attrib_type, boost::iterator_range<iterator>)>
+    std::function<void(boost::iterator_range<iterator>,
+                       boost::iterator_range<iterator>)>
         onAttributeFound = [&pos, &handlePath, &operateOnBuckets](
-            attrib_type type, boost::iterator_range<iterator> value) {
-          switch (type) {
-          case Normal: {
+            boost::iterator_range<iterator> name,
+            boost::iterator_range<iterator> value) {
+          if (name != "style") {
             // This is a normal attribute; treat the whole thing as a path
-            if (checkPath(value)) {
+            if (parser::isPathStatic(value)) {
               Change change(handlePath(value));
               if (!change.empty())
                 pos = operateOnBuckets(std::move(
                     change)); // Set the new pos, because we are mid-parse
             }
-            break;
-          }
-          case Style: {
+          } else {
             // If we have a style attribute, parse through it again, searching
             // for css paths, rather than treat it as a single path in itself.
             auto attribPos = value.begin();
@@ -375,7 +272,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                       iterator path_begin, iterator path_end) {
                     auto path =
                         boost::make_iterator_range(path_begin, path_end);
-                    if (!checkPath(path))
+                    if (!parser::isPathStatic(path))
                       return;
                     Change change = handlePath(path);
                     if (!change.empty()) {
@@ -397,17 +294,12 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                     }
                   }));
             }
-            break;
           }
-          };
         };
-    while (pos != end) {
-      bool ok = parser::phrase_parse(
-          pos, end, parser::getHTMLParser(onAttributeFound), parser::space);
-      if (!ok)
+    while (pos != end)
+      if (!parser::parseHTML(pos, end, onAttributeFound))
         break;
-    }
-  }
+  };
   // We can push out the unchanged data now
   assert(noChange);
   return noChange(nextNoChangeStart, end);

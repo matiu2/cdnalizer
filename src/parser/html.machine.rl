@@ -14,7 +14,8 @@
   }
 
   action rec_attrib_val_end {
-    attrib_found(attrib_name_start, attrib_name_end, attrib_val_start, p);
+    attrib_found(boost::make_iterator_range(attrib_name_start, attrib_name_end),
+                 boost::make_iterator_range(attrib_val_start, p));
   }
 
   find_tag = ^("<")*;
@@ -28,11 +29,10 @@
   attrib_name = attrib_name_chars >rec_attrib_name_start attrib_name_chars* %rec_attrib_name_end;
 
   # Attribute value
-  attrib_val_double_quoted = '"' $rec_attrib_val_start (^'"'*) '"' >rec_attrib_val_end;
-  attrib_val_single_quoted = "'" $rec_attrib_val_start ^"'"* "'" >rec_attrib_val_end; 
-  #attrib_val_no_quote_char = any - (['"/>] | space);
-  attrib_val_no_quote_char = alnum;
-  attrib_val_no_quotes = attrib_val_no_quote_char >rec_attrib_val_start attrib_val_no_quote_char* %rec_attrib_val_end; 
+  attrib_val_double_quoted = '"' ^'"'? >rec_attrib_val_start (^'"'*) '"' >rec_attrib_val_end;
+  attrib_val_single_quoted = "'" ^"'"? >rec_attrib_val_start ^"'"* "'" >rec_attrib_val_end; 
+  attrib_val_no_quote_char = alnum | '-' | '.';  # Non quoted attrib possible chars according to HTML4 spec
+  attrib_val_no_quotes = attrib_val_no_quote_char >rec_attrib_val_start attrib_val_no_quote_char* %rec_attrib_val_end;
   attrib_val = attrib_val_double_quoted | attrib_val_single_quoted | attrib_val_no_quotes;
 
   # Attribute
@@ -42,9 +42,11 @@
   empty_xml = "<!>";
   xml_thing = "<!" ^'-' (any - '>')* '>';
   comment= "<!--" (any - '-')* "-->";
-  end_tag = "</" alnum+ '>';
+  end_tag = "</" ^'>'* '>';
   empty_tag = tag_start space* tag_end;
-  good_tag = tag_start space+ (attrib space+)* attrib? tag_end;
+  good_tag = tag_start space+ (attrib space+)* (attrib)? tag_end;
 
-  tag := xml_thing | comment | end_tag | empty_tag | good_tag;
+  tag = xml_thing | comment | end_tag | empty_tag | good_tag;
+
+  html := (^'<'* tag)*;
 }%%

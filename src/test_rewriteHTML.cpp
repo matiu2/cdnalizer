@@ -241,7 +241,7 @@ go_bandit([]() {
 
   it("7. Handles multiple attribute changes, and with all types of quotes", [&]() {
     const std::string data{
-        R"(<a href="images/a.gif" other_attrib=/blog/images/b.gif singles='images/c.gif'><img src="/images/bad.link" />Bad location</a>)"};
+        R"(<a href="images/a.gif" other_attrib="/blog/images/b.gif" singles='images/c.gif'><img src="/images/bad.link" />Bad location</a>)"};
     /*     0         1         2         3         4         5         6         7         8         9         0         1         2         3 */
 
     location = "/blog/";
@@ -272,7 +272,7 @@ go_bandit([]() {
     // Unchanged: 'a.gif" other_attrib='
     AssertThat(unchanged_blocks.at(unchangedIndex++),
                Equals(SequencedIteratorPair{sequence++, data.cbegin() + 15,
-                                            data.cbegin() + 36}));
+                                            data.cbegin() + 37}));
 
     // New Data:
     AssertThat(new_blocks.at(newBlockIndex++),
@@ -281,8 +281,8 @@ go_bandit([]() {
 
     // Unchanged: 'b.gif singles='
     AssertThat(unchanged_blocks.at(unchangedIndex++),
-               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 48,
-                                            data.cbegin() + 64}));
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 49,
+                                            data.cbegin() + 66}));
 
     // New Data: "http://cdn.supa.ws/blog/imags"
     AssertThat(
@@ -291,8 +291,8 @@ go_bandit([]() {
 
     // Unchanged: '/c.gif"><img src='
     AssertThat(unchanged_blocks.at(unchangedIndex++),
-               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 70,
-                                            data.cbegin() + 88}));
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 72,
+                                            data.cbegin() + 90}));
 
     // New Data: "http://cdn.supa.ws/imgs"
     AssertThat(new_blocks.at(newBlockIndex++),
@@ -300,7 +300,7 @@ go_bandit([]() {
 
     // Unchanged: '/bad.link" />Bad location</a>'
     AssertThat(unchanged_blocks.at(unchangedIndex++),
-               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 95,
+               Equals(SequencedIteratorPair{sequence++, data.cbegin() + 97,
                                             data.cend()}));
   });
 
@@ -385,7 +385,7 @@ go_bandit([]() {
               <img src="/images/bad2.php?x=2" /> Shouldn't be rewritten because it calls bad2.php passing get parameters
               <img src="http://cdn.supa.ws/imgs/good.jpg" />  Should be rewritten because it's in /images/folder
               <img src="http://cdn.supa.ws/imgs/good.jpg?x=.php&y=1" />  Should be rewritten because it's in /images/folder - it should ignore the .php
-              <img src="/images/good.jpg?x=.php" />  Special bug - in favor of speed, we assume it's a .php because it ends in that. It's unlikely that someone's going to pass get parameters to a real jpg
+              <img src="http://cdn.supa.ws/imgs/good.jpg?x=.php" />  Special bug - in favor of speed, we assume it's a .php because it ends in that. It's unlikely that someone's going to pass get parameters to a real jpg
               <A boolean style="background-image: url('http://cdn.supa.ws/imgs/happy.jpg'); filter: url('http://cdn.supa.ws/imgs/filter.css');" check_something_else>both urls should be rewritten</a>
               <A boolean style="background-image: url('/images/happy.php'); filter: url('/images/filter.css.php');" check_something_else>Both should not be rewritten</a>)--");
     std::string whatWeGot;
