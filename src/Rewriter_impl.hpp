@@ -23,6 +23,8 @@
 
 namespace cdnalizer {
 
+using namespace std::string_literals; // enables s-suffix for std::string literals  
+
 template <typename iterator>
 iterator rewriteHTML(const std::string &server_url, const std::string &location,
                      const Config &config, iterator start, iterator end,
@@ -251,7 +253,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
         onAttributeFound = [&pos, &handlePath, &operateOnBuckets](
             boost::iterator_range<iterator> name,
             boost::iterator_range<iterator> value) {
-          if (name != "style") {
+          if (name != "style"s) {
             // This is a normal attribute; treat the whole thing as a path
             if (parser::isPathStatic(value)) {
               Change change(handlePath(value));
