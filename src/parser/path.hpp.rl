@@ -1,12 +1,14 @@
 #pragma once
 
+#include <boost/range/iterator_range.hpp>
+
 namespace cdnalizer {
 namespace parser {
 
 %%{ 
-  machine css_impl;
-  include css "css.machine.rl";
-  css_impl := css;
+  machine path_impl;
+  include path "path.machine.rl";
+  path_impl := path;
 }%%
 
 // State machine exports
@@ -15,20 +17,18 @@ namespace parser {
 // State machine data
 %%write data;
 
-/// Parses some CSS, looking for url() functions
+/// Parses a path
 /// @param A reference to the pointer to the start of the data. This will be incremented as our search continues
 /// @param pe A const reference to the pointer to the end of the input
-/// @param path_found This function will be called every time a path is found,
-///        passing two iterators, the first letter of the path, and one past the end.
+/// Returns 'true' if the path is static.
 /// p is a reference because when dealing with Apache bucket brigades, it can change, and we changed it also
 /// pe is a const reference because apache bucket brigade splitting may change it (but we don't change it).
 template <typename Iterator>
-Iterator parseCSS(Iterator &p, const Iterator& pe,
-                  std::function<void(Iterator, Iterator)> path_found) {
+bool isPathStatic(boost::iterator_range<Iterator> path) {
+  auto p = path.begin();
+  const auto &pe = path.end();
+  const auto &eof = pe;
   int cs;
-
-  // Data needed for the actions
-  auto css_start = p;
 
   // State machine initialization
   %%write init;
@@ -36,9 +36,10 @@ Iterator parseCSS(Iterator &p, const Iterator& pe,
   // State machine code
   %%write exec;
 
-  return p;
+  return true;
 }
 
 
 } /* parser */ 
 } /* cdnalizer  */ 
+

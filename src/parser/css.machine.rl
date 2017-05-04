@@ -1,5 +1,5 @@
 %%{
-    machine css_url;
+    machine css;
 
     action rec_start {
       css_start = p;
@@ -9,7 +9,7 @@
       path_found(css_start, p);
     }
 
-    find_url = (any - 'u')*;
+    find_url = (any)* -- "url";
     url_start = "url" space* '(' space**;
     url_end = space* ')';
     single_quotes = "'" %rec_start (any - "'")+ "'" >rec_end;
@@ -18,5 +18,5 @@
     no_quotes = (any - no_quotes_term) > rec_start (any - no_quotes_term)* %rec_end;
     url_middle = single_quotes | double_quotes | no_quotes;
     single_url = find_url url_start url_middle url_end;
-    css_url := single_url*;
+    css = single_url*;
 }%%

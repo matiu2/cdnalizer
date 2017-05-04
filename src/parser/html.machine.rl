@@ -29,10 +29,13 @@
   attrib_name = attrib_name_chars >rec_attrib_name_start attrib_name_chars* %rec_attrib_name_end;
 
   # Attribute value
-  attrib_val_double_quoted = '"' ^'"'? >rec_attrib_val_start (^'"'*) '"' >rec_attrib_val_end;
-  attrib_val_single_quoted = "'" ^"'"? >rec_attrib_val_start ^"'"* "'" >rec_attrib_val_end; 
-  attrib_val_no_quote_char = alnum | '-' | '.';  # Non quoted attrib possible chars according to HTML4 spec
-  attrib_val_no_quotes = attrib_val_no_quote_char >rec_attrib_val_start attrib_val_no_quote_char* %rec_attrib_val_end;
+  dq = '"';
+  sq = "'";
+  attrib_val_double_quoted = dq ^dq >rec_attrib_val_start (^dq*) dq >rec_attrib_val_end;
+  attrib_val_single_quoted = sq ^sq >rec_attrib_val_start (^sq*) sq >rec_attrib_val_end; 
+  #attrib_val_no_quote_char = alnum | '-' | '.';  # Non quoted attrib possible chars according to HTML4 spec
+  attrib_val_no_quote_char = any - (space | '>');
+  attrib_val_no_quotes = (attrib_val_no_quote_char - ['"]) >rec_attrib_val_start ((attrib_val_no_quote_char*) -- "/>") %rec_attrib_val_end;
   attrib_val = attrib_val_double_quoted | attrib_val_single_quoted | attrib_val_no_quotes;
 
   # Attribute

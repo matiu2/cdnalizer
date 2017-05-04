@@ -6,73 +6,77 @@ namespace cdnalizer {
 namespace parser {
 
 
-#line 9 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 10 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 
 // State machine exports
 
 #line 15 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 
-#line 13 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 14 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 // State machine data
 
 #line 21 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
-static const char _css_url_actions[] = {
+static const char _css_impl_actions[] = {
 	0, 1, 0, 1, 1
 };
 
-static const char _css_url_key_offsets[] = {
-	0, 0, 1, 2, 3, 7, 13, 19, 
-	23, 24, 25, 26, 27
+static const char _css_impl_key_offsets[] = {
+	0, 0, 1, 3, 5, 9, 15, 21, 
+	25, 26, 27, 28, 29
 };
 
-static const char _css_url_trans_keys[] = {
-	117, 114, 108, 32, 40, 9, 13, 32, 
-	34, 39, 41, 9, 13, 32, 34, 39, 
-	41, 9, 13, 32, 41, 9, 13, 34, 
-	34, 39, 39, 117, 0
+static const char _css_impl_trans_keys[] = {
+	117, 114, 117, 108, 117, 32, 40, 9, 
+	13, 32, 34, 39, 41, 9, 13, 32, 
+	34, 39, 41, 9, 13, 32, 41, 9, 
+	13, 34, 34, 39, 39, 117, 0
 };
 
-static const char _css_url_single_lengths[] = {
-	0, 1, 1, 1, 2, 4, 4, 2, 
+static const char _css_impl_single_lengths[] = {
+	0, 1, 2, 2, 2, 4, 4, 2, 
 	1, 1, 1, 1, 1
 };
 
-static const char _css_url_range_lengths[] = {
+static const char _css_impl_range_lengths[] = {
 	0, 0, 0, 0, 1, 1, 1, 1, 
 	0, 0, 0, 0, 0
 };
 
-static const char _css_url_index_offsets[] = {
-	0, 0, 2, 4, 6, 10, 16, 22, 
-	26, 28, 30, 32, 34
+static const char _css_impl_index_offsets[] = {
+	0, 0, 2, 5, 8, 12, 18, 24, 
+	28, 30, 32, 34, 36
 };
 
-static const char _css_url_trans_targs[] = {
-	2, 1, 3, 0, 4, 0, 4, 5, 
-	4, 0, 5, 8, 10, 0, 5, 6, 
-	7, 0, 0, 12, 7, 6, 7, 12, 
-	7, 0, 0, 9, 7, 9, 0, 11, 
-	7, 11, 2, 1, 0
+static const char _css_impl_indicies[] = {
+	1, 0, 2, 1, 0, 3, 1, 0, 
+	3, 5, 3, 4, 5, 7, 8, 4, 
+	5, 6, 10, 4, 4, 11, 10, 9, 
+	12, 13, 12, 4, 4, 14, 10, 15, 
+	4, 16, 10, 17, 1, 0, 0
 };
 
-static const char _css_url_trans_actions[] = {
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 1, 
-	3, 0, 0, 3, 3, 0, 0, 0, 
-	0, 0, 0, 1, 3, 0, 0, 1, 
-	3, 0, 0, 0, 0
+static const char _css_impl_trans_targs[] = {
+	1, 2, 3, 4, 0, 5, 6, 8, 
+	10, 6, 7, 12, 7, 12, 9, 9, 
+	11, 11
 };
 
-static const int css_url_start = 12;
-static const int css_url_first_final = 12;
-static const int css_url_error = 0;
+static const char _css_impl_trans_actions[] = {
+	0, 0, 0, 0, 0, 0, 1, 0, 
+	0, 0, 3, 3, 0, 0, 1, 0, 
+	1, 0
+};
 
-static const int css_url_en_css_url = 12;
+static const int css_impl_start = 12;
+static const int css_impl_first_final = 12;
+static const int css_impl_error = 0;
+
+static const int css_impl_en_css_impl = 12;
 
 
-#line 16 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 17 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 /// Parses some CSS, looking for url() functions
 /// @param A reference to the pointer to the start of the data. This will be incremented as our search continues
@@ -91,16 +95,16 @@ Iterator parseCSS(Iterator &p, const Iterator& pe,
 
   // State machine initialization
   
-#line 95 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 99 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 	{
-	cs = css_url_start;
+	cs = css_impl_start;
 	}
 
-#line 34 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 35 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
   // State machine code
   
-#line 104 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 108 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -113,10 +117,10 @@ Iterator parseCSS(Iterator &p, const Iterator& pe,
 	if ( cs == 0 )
 		goto _out;
 _resume:
-	_keys = _css_url_trans_keys + _css_url_key_offsets[cs];
-	_trans = _css_url_index_offsets[cs];
+	_keys = _css_impl_trans_keys + _css_impl_key_offsets[cs];
+	_trans = _css_impl_index_offsets[cs];
 
-	_klen = _css_url_single_lengths[cs];
+	_klen = _css_impl_single_lengths[cs];
 	if ( _klen > 0 ) {
 		const char *_lower = _keys;
 		const char *_mid;
@@ -139,7 +143,7 @@ _resume:
 		_trans += _klen;
 	}
 
-	_klen = _css_url_range_lengths[cs];
+	_klen = _css_impl_range_lengths[cs];
 	if ( _klen > 0 ) {
 		const char *_lower = _keys;
 		const char *_mid;
@@ -162,12 +166,13 @@ _resume:
 	}
 
 _match:
-	cs = _css_url_trans_targs[_trans];
+	_trans = _css_impl_indicies[_trans];
+	cs = _css_impl_trans_targs[_trans];
 
-	if ( _css_url_trans_actions[_trans] == 0 )
+	if ( _css_impl_trans_actions[_trans] == 0 )
 		goto _again;
 
-	_acts = _css_url_actions + _css_url_trans_actions[_trans];
+	_acts = _css_impl_actions + _css_impl_trans_actions[_trans];
 	_nacts = (unsigned int) *_acts++;
 	while ( _nacts-- > 0 )
 	{
@@ -185,7 +190,7 @@ _match:
       path_found(css_start, p);
     }
 	break;
-#line 189 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 194 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 		}
 	}
 
@@ -198,7 +203,7 @@ _again:
 	_out: {}
 	}
 
-#line 37 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 38 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
   return p;
 }
