@@ -17,10 +17,6 @@
 #include <iterator> // find search
 #include <cassert>
 
-#include <boost/hana/if.hpp>
-#include <boost/hana/equal.hpp>
-#include <boost/hana/type.hpp>
-
 namespace cdnalizer {
 
 using namespace std::string_literals; // enables s-suffix for std::string literals  
