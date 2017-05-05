@@ -77,12 +77,22 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.machine.rl
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# js state machine pic
+add_custom_command(
+    OUTPUT ${BLOG_DIR}/js_state_machine.png
+    PRE_BUILD
+    COMMAND ragel -Vp -M js ${CMAKE_CURRENT_SOURCE_DIR}/js.machine.rl | dot -Tpng -o ${BLOG_DIR}/js_state_machine.png;
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/js.machine.rl
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
  
 add_custom_target(parser_visualization 
     DEPENDS ${BLOG_DIR}/css_state_machine.png
     DEPENDS ${BLOG_DIR}/html_state_machine.png
     DEPENDS ${BLOG_DIR}/html_attrib_state_machine.png
     DEPENDS ${BLOG_DIR}/path_state_machine.png
+    DEPENDS ${BLOG_DIR}/js_state_machine.png
 )
 
 ##################################
