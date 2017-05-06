@@ -1,5 +1,13 @@
 %%{
-  machine html;
+  machine tag;
+
+  action rec_tag_name_start {
+      tag_name_start = p;
+  }
+
+  action rec_tag_name_end {
+    tag_found(boost::make_iterator_range(tag_name_start, p));
+  }
 
   action rec_attrib_name_start {
     attrib_name_start = p;
@@ -18,21 +26,8 @@
                  boost::make_iterator_range(attrib_val_start, p));
   }
 
-  action on_error {
-      // Forward to the next tag, then retry
-      while ((p != pe) && (*p != '<'))
-          ++p;
-       if (p == pe)
-           return false;
-       else {
-           cs = html_start;
-       }
-  }
-
-  find_tag = ^("<")*;
-
   # reusable tag parts
-  tag_start = '<' alnum+;
+  tag_start = '<' alnum >rec_tag_name_start alnum* %rec_tag_name_end;
   tag_end = space* '/'? '>';
 
   # Attribute Name
@@ -60,7 +55,5 @@
   empty_tag = tag_start space* tag_end;
   good_tag = tag_start space+ (attrib space+)* (attrib)? tag_end;
 
-  tag = xml_thing | comment | end_tag | empty_tag | good_tag;
-
-  html := (^'<'* tag)* $!on_error;
+  tag := xml_thing | comment | end_tag | empty_tag | good_tag;
 }%%

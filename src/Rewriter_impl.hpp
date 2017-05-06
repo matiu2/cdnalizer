@@ -244,6 +244,23 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
                        }));
     }
   } else {
+    std::function<void(boost::iterator_range<iterator>)> onTagNameFound =
+        [&](boost::iterator_range<iterator> tag_name) {
+          // For now we'll just ignore everything inside of java script
+          const std::string script("script");
+          auto comp = [](auto a, auto b) { return std::tolower(a) == std::tolower(b); };
+          if ((std::distance(tag_name.begin(), tag_name.end()) ==
+               std::distance(script.begin(), script.end())) &&
+              std::equal(tag_name.begin(), tag_name.end(), script.begin(),
+                         script.end(), comp)) {
+            // Find </script> then continue parsing the HTML
+            const std::string end_script("</script>");
+            pos = std::search(pos, end, end_script.begin(), end_script.end(),
+                              comp);
+            if (pos != end)
+              std::advance(pos, end_script.size());
+          }
+        };
     std::function<void(boost::iterator_range<iterator>,
                        boost::iterator_range<iterator>)>
         onAttributeFound = [&pos, &handlePath, &operateOnBuckets](
@@ -294,7 +311,16 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
             }
           }
         };
-    parser::parseHTML(pos, end, onAttributeFound);
+    while (pos != end) {
+      // Find tag
+      while ((pos != end) && (*pos != '<'))
+        ++pos;
+      if (pos == end)
+        break;
+      // Parse a single tag
+      parser::parseHTMLTag<iterator>(pos, end, onTagNameFound,
+                                     onAttributeFound);
+    }
   };
   // We can push out the unchanged data now
   assert(noChange);

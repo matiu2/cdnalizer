@@ -30,7 +30,6 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-
 add_custom_target(parser_code_generated
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp
@@ -54,20 +53,10 @@ add_custom_command(
 add_custom_command(
     OUTPUT ${BLOG_DIR}/html_state_machine.png
     PRE_BUILD
-    COMMAND ragel -Vp -M html ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl | dot -Tpng -o ${BLOG_DIR}/html_state_machine.png;
+    COMMAND ragel -Vp -M tag ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl | dot -Tpng -o ${BLOG_DIR}/html_state_machine.png;
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
-
-# HTML machine visualization, but just the attrib part
-add_custom_command(
-    OUTPUT ${BLOG_DIR}/html_attrib_state_machine.png
-    PRE_BUILD
-    COMMAND ragel -Vp -M attrib ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl | dot -Tpng -o ${BLOG_DIR}/html_attrib_state_machine.png;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
 
 # Update the blog directory with the latest path state machine pic
 add_custom_command(
@@ -90,7 +79,6 @@ add_custom_command(
 add_custom_target(parser_visualization 
     DEPENDS ${BLOG_DIR}/css_state_machine.png
     DEPENDS ${BLOG_DIR}/html_state_machine.png
-    DEPENDS ${BLOG_DIR}/html_attrib_state_machine.png
     DEPENDS ${BLOG_DIR}/path_state_machine.png
     DEPENDS ${BLOG_DIR}/js_state_machine.png
 )
