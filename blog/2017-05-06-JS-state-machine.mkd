@@ -1,0 +1,18 @@
+# JS state machine
+
+I was so enamoured with state machines that I thought about converting the
+whole filter to one giant ragel state machine.
+
+My buddy Wolf was the voice of sanity I needed; he said "state machines are
+great for representing small susinct problems" if they get to big, you're just
+trying to build with wet spaghetti.
+
+So here's the beautiful JS state machine - it just looks for strings; it
+handles escaped quotes (eg. \") by ignoring the character immediately following
+the '\', that way '\\' is ignored and '\"' is also ignored.
+
+![JS state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/js_state_machine.png)
+
+My plan is to treat everystring we find as a potential path to be rewritten. It
+may affect badly written JS that depends on strings being a certain length, so
+we may have to have an option later on to not rewrite JS maybe.
