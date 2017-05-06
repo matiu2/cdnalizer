@@ -6,9 +6,8 @@ namespace cdnalizer {
 namespace parser {
 
 %%{ 
-  machine path_impl;
+  machine path;
   include path "path.machine.rl";
-  path_impl := path;
 }%%
 
 // State machine exports

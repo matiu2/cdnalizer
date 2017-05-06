@@ -4,9 +4,8 @@ namespace cdnalizer {
 namespace parser {
 
 %%{ 
-  machine css_impl;
+  machine css;
   include css "css.machine.rl";
-  css_impl := css;
 }%%
 
 // State machine exports
@@ -28,7 +27,7 @@ Iterator parseCSS(Iterator &p, const Iterator& pe,
   int cs;
 
   // Data needed for the actions
-  auto css_start = p;
+  auto url_start = p;
 
   // State machine initialization
   %%write init;

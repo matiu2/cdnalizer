@@ -294,9 +294,7 @@ iterator rewriteHTML(const std::string &server_url, const std::string &location,
             }
           }
         };
-    while (pos != end)
-      if (!parser::parseHTML(pos, end, onAttributeFound))
-        break;
+    parser::parseHTML(pos, end, onAttributeFound);
   };
   // We can push out the unchanged data now
   assert(noChange);

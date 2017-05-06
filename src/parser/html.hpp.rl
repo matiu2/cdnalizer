@@ -30,6 +30,7 @@ bool parseHTML(Iterator &p, const Iterator &pe,
                                   boost::iterator_range<Iterator>)>
                    attrib_found) {
   int cs;
+  const auto eof = pe;
 
   // Data needed for the actions
   auto attrib_name_start = p;
@@ -42,7 +43,7 @@ bool parseHTML(Iterator &p, const Iterator &pe,
   // State machine code
   %%write exec;
 
-  return cs == 20;
+  return cs >= html_first_final;
 }
 
 

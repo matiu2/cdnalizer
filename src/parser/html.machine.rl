@@ -18,6 +18,17 @@
                  boost::make_iterator_range(attrib_val_start, p));
   }
 
+  action on_error {
+      // Forward to the next tag, then retry
+      while ((p != pe) && (*p != '<'))
+          ++p;
+       if (p == pe)
+           return false;
+       else {
+           cs = html_start;
+       }
+  }
+
   find_tag = ^("<")*;
 
   # reusable tag parts
@@ -51,5 +62,5 @@
 
   tag = xml_thing | comment | end_tag | empty_tag | good_tag;
 
-  html := (^'<'* tag)*;
+  html := (^'<'* tag)* $!on_error;
 }%%

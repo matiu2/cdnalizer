@@ -4,6 +4,8 @@
 
 <!-- ... -->
 
+## Ignore for now <script> tags (later on parse them with the JS handler)
+
 ## Parse JS strings
 
 ## Parse inline JS inside of HTML
