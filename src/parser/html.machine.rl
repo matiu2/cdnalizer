@@ -55,5 +55,5 @@
   empty_tag = tag_start space* tag_end;
   good_tag = tag_start space+ (attrib space+)* (attrib)? tag_end;
 
-  tag = xml_thing | comment | end_tag | empty_tag | good_tag;
+  simple_tag = xml_thing | comment | end_tag | empty_tag | good_tag;
 }%%

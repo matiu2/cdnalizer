@@ -39,7 +39,7 @@ add_custom_target(parser_code_generated
 
 set(VISUALIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../docs/state-machines)
 
-FILE(WRITE "${VISUALIZATION_DIR}/index.html" "<dl>")
+FILE(WRITE "${VISUALIZATION_DIR}/index.html" "<body style='font-size: xx-large; font-family: sans'><dl>")
 
 function(add_machine_visualization)
     set(one MAIN_FILE
@@ -61,21 +61,21 @@ function(add_machine_visualization)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-file(APPEND "${VISUALIZATION_DIR}/index.html" "<dt>${VISU_MACHINE_NAME}</dt><dd><a href=\"${VISU_MACHINE_NAME}.svg\"><img width=\"640\" height=\"480\" src=\"${VISU_MACHINE_NAME}.svg\" /></dd>\"")
+file(APPEND "${VISUALIZATION_DIR}/index.html" "<dt>${VISU_MACHINE_NAME}</dt><dd><a href=\"${VISU_MACHINE_NAME}.svg\"><img width=\"320\" height=\"160\" src=\"${VISU_MACHINE_NAME}.svg\" /></dd>")
 
 endfunction()
 
 # Update the blog directory with the latest state machine visualization
 add_machine_visualization(MAIN_FILE css MACHINE_NAME css)
-add_machine_visualization(MAIN_FILE html MACHINE_NAME html)
+add_machine_visualization(MAIN_FILE html MACHINE_NAME simple_tag)
 add_machine_visualization(MAIN_FILE path MACHINE_NAME path)
 add_machine_visualization(MAIN_FILE js MACHINE_NAME js)
 
-FILE(APPEND "${VISUALIZATION_DIR}/index.html" "</dl>")
+FILE(APPEND "${VISUALIZATION_DIR}/index.html" "</body></dl>")
 
 add_custom_target(parser_visualization
     DEPENDS "${VISUALIZATION_DIR}/css.svg"
-    DEPENDS "${VISUALIZATION_DIR}/html.svg"
+    DEPENDS "${VISUALIZATION_DIR}/simple_tag.svg"
     DEPENDS "${VISUALIZATION_DIR}/path.svg"
     DEPENDS "${VISUALIZATION_DIR}/js.svg"
     DEPENDS "${VISUALIZATION_DIR}/index.html")
