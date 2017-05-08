@@ -1,86 +1,90 @@
 project (parser)
 
-# Generate css.hpp source from the ragel template
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
-    PRE_BUILD
-    COMMAND ragel -C -o ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp.rl
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+# Function for generating a x.hpp file from an x.machine.rl file, plus a x.hpp.rl file
+function(add_ragel_file)
+    set(one MAIN_FILE
+            MACHINE_NAME)
+    set(multi EXTRA_RAGEL_FILES)
+    cmake_parse_arguments(ADD_RAGEL "" "${one}" "${multi}" ${ARGN})
 
-# Generate html.hpp source from the ragel template
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp
-    PRE_BUILD
-    COMMAND ragel -C -o ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp.rl;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp.rl
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+    set(extra_depends "")
+    foreach(extra_file ${ADD_RAGEL_EXTRA_RAGEL_FILES})
+        set(extra_depends ${extra_depends} DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${extra_file})
+    endforeach()
 
-# Generate path.hpp source from the ragel template
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp
-    PRE_BUILD
-    COMMAND ragel -C -o ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp.rl;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp.rl
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp
+        COMMAND ragel -C -M ${ADD_RAGEL_MACHINE_NAME}
+                -o ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp 
+                ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp.rl
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp.rl
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.machine.rl
+        ${extra_depends}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+    set(HEADER_DEPENDS ${HEADER_DEPENDS} DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp)
+endfunction()
+
+# Generate all the *.hpp from the ragel files 
+add_ragel_file(MAIN_FILE css MACHINE_NAME css)
+add_ragel_file(MAIN_FILE html MACHINE_NAME html)
+add_ragel_file(MAIN_FILE path MACHINE_NAME path)
 
 add_custom_target(parser_code_generated
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp
+    ${HEADER_DEPENDS}
 )
 
 ################################
 
-set(BLOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../blog)
+set(VISUALIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../docs/state-machines)
 
-# Update the blog directory with the latest css state machine pic
-add_custom_command(
-    OUTPUT ${BLOG_DIR}/css_state_machine.png
-    PRE_BUILD
-    COMMAND ragel -Vp -M css ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl | dot -Tpng -o ${BLOG_DIR}/css_state_machine.png;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+FILE(WRITE "${VISUALIZATION_DIR}/index.html" "<dl>")
 
-# Update the blog directory with the latest html state machine pic
-add_custom_command(
-    OUTPUT ${BLOG_DIR}/html_state_machine.png
-    PRE_BUILD
-    COMMAND ragel -Vp -M tag ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl | dot -Tpng -o ${BLOG_DIR}/html_state_machine.png;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+function(add_machine_visualization)
+    set(one MAIN_FILE
+            MACHINE_NAME)
+    set(multi DEPENDENCIES)
+    cmake_parse_arguments(VISU "" "${one}" "${multi}" ${ARGN})
+    
+    set(extra_depends "")
+    foreach(extra_file ${VISU_DEPENDENCIES})
+        set(extra_depends ${extra_depends} DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${extra_file})
+    endforeach()
 
-# Update the blog directory with the latest path state machine pic
-add_custom_command(
-    OUTPUT ${BLOG_DIR}/path_state_machine.png
-    PRE_BUILD
-    COMMAND ragel -Vp -M path ${CMAKE_CURRENT_SOURCE_DIR}/path.machine.rl | dot -Tpng -o ${BLOG_DIR}/path_state_machine.png;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+    add_custom_command(
+        OUTPUT ${VISUALIZATION_DIR}/${VISU_MACHINE_NAME}.svg
+        COMMAND ragel -Vp -M ${VISU_MACHINE_NAME}
+                ${CMAKE_CURRENT_SOURCE_DIR}/${VISU_MAIN_FILE}.machine.rl |
+                dot -Tsvg -o ${VISUALIZATION_DIR}/${VISU_MACHINE_NAME}.svg
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${VISU_MAIN_FILE}.machine.rl
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
 
-# js state machine pic
+file(APPEND "${VISUALIZATION_DIR}/index.html" "<dt>${VISU_MACHINE_NAME}</dt><dd><a href=\"${VISU_MACHINE_NAME}.svg\"><img width=\"640\" height=\"480\" src=\"${VISU_MACHINE_NAME}.svg\" /></dd>\"")
+
+endfunction()
+
+# Update the blog directory with the latest state machine visualization
+add_machine_visualization(MAIN_FILE css MACHINE_NAME css)
+add_machine_visualization(MAIN_FILE html MACHINE_NAME html)
+add_machine_visualization(MAIN_FILE path MACHINE_NAME path)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME js)
+
+FILE(APPEND "${VISUALIZATION_DIR}/index.html" "</dl>")
+
+add_custom_target(parser_visualization
+    DEPENDS "${VISUALIZATION_DIR}/css.svg"
+    DEPENDS "${VISUALIZATION_DIR}/html.svg"
+    DEPENDS "${VISUALIZATION_DIR}/path.svg"
+    DEPENDS "${VISUALIZATION_DIR}/js.svg"
+    DEPENDS "${VISUALIZATION_DIR}/index.html")
+
+
 add_custom_command(
-    OUTPUT ${BLOG_DIR}/js_state_machine.png
-    PRE_BUILD
-    COMMAND ragel -Vp -M js ${CMAKE_CURRENT_SOURCE_DIR}/js.machine.rl | dot -Tpng -o ${BLOG_DIR}/js_state_machine.png;
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/js.machine.rl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
- 
-add_custom_target(parser_visualization 
-    DEPENDS ${BLOG_DIR}/css_state_machine.png
-    DEPENDS ${BLOG_DIR}/html_state_machine.png
-    DEPENDS ${BLOG_DIR}/path_state_machine.png
-    DEPENDS ${BLOG_DIR}/js_state_machine.png
+    TARGET parser_visualization
+    POST_BUILD 
+    COMMAND cmake -E copy index.html ${VISUALIZATION_DIR}/index.html
 )
 
 ##################################
