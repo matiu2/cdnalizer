@@ -79,7 +79,9 @@
      (
          (bs ^dq) |
          # or we may find a \"string\"
-         dq_escaped_string
+         dq_escaped_string |
+         sq_string |
+         sl_string
      )*
      # The final state of the parser
      ^bs dq;
