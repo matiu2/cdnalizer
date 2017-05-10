@@ -61,7 +61,8 @@ function(add_machine_visualization)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-file(APPEND "${VISUALIZATION_DIR}/index.html" "<dt>${VISU_MACHINE_NAME}</dt><dd><a href=\"${VISU_MACHINE_NAME}.svg\"><img width=\"320\" height=\"160\" src=\"${VISU_MACHINE_NAME}.svg\" /></dd>")
+file(APPEND "${VISUALIZATION_DIR}/index.html" 
+            "<dt>${VISU_MACHINE_NAME}</dt><dd><a href=\"${VISU_MACHINE_NAME}.svg\"><img width=\"320\" height=\"160\" src=\"${VISU_MACHINE_NAME}.svg\" /></dd>")
 
 endfunction()
 
@@ -70,6 +71,10 @@ add_machine_visualization(MAIN_FILE css MACHINE_NAME css)
 add_machine_visualization(MAIN_FILE html MACHINE_NAME simple_tag)
 add_machine_visualization(MAIN_FILE path MACHINE_NAME path)
 add_machine_visualization(MAIN_FILE js MACHINE_NAME js)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME end_script_tag)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME in_script_js)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME dq_escaped_string)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME in_dq_js)
 
 FILE(APPEND "${VISUALIZATION_DIR}/index.html" "</body></dl>")
 
@@ -78,13 +83,10 @@ add_custom_target(parser_visualization
     DEPENDS "${VISUALIZATION_DIR}/simple_tag.svg"
     DEPENDS "${VISUALIZATION_DIR}/path.svg"
     DEPENDS "${VISUALIZATION_DIR}/js.svg"
+    DEPENDS "${VISUALIZATION_DIR}/end_script_tag.svg"
+    DEPENDS "${VISUALIZATION_DIR}/in_script_js.svg"
+    DEPENDS "${VISUALIZATION_DIR}/dq_escaped_string.svg"
+    DEPENDS "${VISUALIZATION_DIR}/in_dq_js.svg"
     DEPENDS "${VISUALIZATION_DIR}/index.html")
-
-
-add_custom_command(
-    TARGET parser_visualization
-    POST_BUILD 
-    COMMAND cmake -E copy index.html ${VISUALIZATION_DIR}/index.html
-)
 
 ##################################

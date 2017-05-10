@@ -9,6 +9,11 @@
       onStringFound(string_start, p);
   }
 
+  # This action exists to stop 'rec_string_start' being called at the 's' in
+  # </script>
+  action noop {
+  }
+
   # Normal JS (inside a <script></script> tag)
   sq = "'";
   dq = '"';
@@ -22,15 +27,60 @@
   sl_string = sl sl_char >rec_string_start sl_char* sl >rec_string_end;
   string = sq_string | dq_string | sl_string;
   js = (^(sq | dq | sl)* string)*;
-  end_script_tag = "</" /script/i '>';
+
+  # JS inside of a script tag
+  end_script_tag = "</" "script"i '>';
   in_script_js = js end_script_tag;
 
-  # JS inside of a "double quoted" attribute
-  bsdq_dq '\"';
-  bsdq_char = ^(bsdq | bs) | ((bs any) - bsdq);
-  bsdq_string = bsdq dq_char >rec_string_start dq_char* bsdq >rec_string_end;
-  bsdq_whole_string = sq_string | bsdq_string | sl_string;
-  bsdq_js = (^(sq | bsdq | sl)* string)* dq;
- 
-
+  # JS inside of a "double quoted" attribute, eg. <button onclick="location = \"/some/path\"" />
+  #                                                   starts here ^
+  # Commonly used sub machine - anything except backslash or double quote
+  not_bsdq = (any - (bs | dq));
+  # After the attribute start, read in junk that is not a js string
+  # Before we find the js \"string\" or 'string' or /string/ we can accept
+  # any char except '\', '"', '/', "'"
+  dq_b4_js_string = (
+      (any - (bs | dq | sq | sl)) |
+      (bs ^dq)
+  )*;
+  # The escaped js \"string\"
+  dq_escaped_string = 
+       # It could be empty
+       (bs dq bs dq) |
+       # Or a full string
+       (
+           # The beginning \"
+           bs dq 
+           # The first character can be anything except dq or backslash
+           (
+               (not_bsdq) | 
+               # Or the first character can be a backslash as long as it's not followed by a dq
+               bs (any - dq)
+               # Or the first character can be a dq ending the whole state machine.
+               # We don't record that here because it's gotten to later via the '|'
+               # (or) operator
+           ) >rec_string_start 
+           # Subsequent characters (in the \"string\" can be any thing except '\' or '"'
+           (  
+               not_bsdq |
+               # Then it can be followed by a bs but not bs dq
+               bs ^dq
+           )* # Any number of this group of chars
+           # Finally it should be delimeted by '\"'
+           bs dq @rec_string_end
+       );
+  # Before we find a js string we can accept all sorts of junk
+  in_dq_js = 
+     # The first character we see is the double quote that starts the attribute
+     dq
+     # Junk that comes before the js string
+     dq_b4_js_string
+     # If we find '\' followed by anything other than bs, we need to go back to the beginning
+     (
+         (bs ^dq) |
+         # or we may find a \"string\"
+         dq_escaped_string
+     )*
+     # The final state of the parser
+     ^bs dq;
 }%%
