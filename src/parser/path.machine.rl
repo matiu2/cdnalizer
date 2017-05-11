@@ -13,6 +13,6 @@ php = ".php";
 pl = ".pl";
 py = ".py";
 extensions = php | pl | py;
-path := (any - '?')* extensions %done ('?' >done)? ;
+path = (any - '?')* extensions %done ('?' >done)? ;
 
 }%%

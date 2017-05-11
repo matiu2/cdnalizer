@@ -1,5 +1,5 @@
 %%{
-  machine html;
+  machine simple_tag;
 
   action rec_tag_name_start {
       tag_name_start = p;

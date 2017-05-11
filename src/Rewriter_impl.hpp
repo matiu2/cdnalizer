@@ -17,6 +17,8 @@
 #include <iterator> // find search
 #include <cassert>
 
+#include <boost/range/iterator_range.hpp>
+
 namespace cdnalizer {
 
 using namespace std::string_literals; // enables s-suffix for std::string literals  

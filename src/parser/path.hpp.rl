@@ -8,6 +8,7 @@ namespace parser {
 %%{ 
   machine path;
   include path "path.machine.rl";
+  path_impl := path;
 }%%
 
 // State machine exports

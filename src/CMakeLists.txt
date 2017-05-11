@@ -22,6 +22,7 @@ add_test(test_config test_config)
 add_executable(test_rewriteHTML test_rewriteHTML.cpp)
 target_link_libraries(test_rewriteHTML base)
 add_dependencies(test_rewriteHTML bandit)
+add_dependencies(test_rewriteHTML parser_code_generated)
 set_target_properties(test_rewriteHTML PROPERTIES
                       INCLUDE_DIRECTORIES "${BANDIT_INCLUDE_DIR}")
 add_test(test_rewriteHTML test_rewriteHTML)

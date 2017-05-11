@@ -6,8 +6,9 @@ namespace cdnalizer {
 namespace parser {
 
 %%{ 
-  machine tag;
-  include tag "html.machine.rl";
+  machine tag_impl;
+  include simple_tag "html.machine.rl";
+  tag_impl := simple_tag;
 }%%
 
 // State machine exports
@@ -47,7 +48,7 @@ bool parseHTMLTag(
   // State machine code
   %%write exec;
 
-  return cs >= tag_first_final;
+  return cs >= tag_impl_first_final;
 }
 
 

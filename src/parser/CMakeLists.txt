@@ -1,9 +1,8 @@
 project (parser)
 
 # Function for generating a x.hpp file from an x.machine.rl file, plus a x.hpp.rl file
-function(add_ragel_file)
-    set(one MAIN_FILE
-            MACHINE_NAME)
+macro(add_ragel_file)
+    set(one MAIN_FILE)
     set(multi EXTRA_RAGEL_FILES)
     cmake_parse_arguments(ADD_RAGEL "" "${one}" "${multi}" ${ARGN})
 
@@ -14,7 +13,7 @@ function(add_ragel_file)
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp
-        COMMAND ragel -C -M ${ADD_RAGEL_MACHINE_NAME}
+        COMMAND ragel -C
                 -o ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp 
                 ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp.rl
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp.rl
@@ -22,17 +21,17 @@ function(add_ragel_file)
         ${extra_depends}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
-
-    set(HEADER_DEPENDS ${HEADER_DEPENDS} DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_RAGEL_MAIN_FILE}.hpp)
-endfunction()
+endmacro()
 
 # Generate all the *.hpp from the ragel files 
-add_ragel_file(MAIN_FILE css MACHINE_NAME css)
-add_ragel_file(MAIN_FILE html MACHINE_NAME html)
-add_ragel_file(MAIN_FILE path MACHINE_NAME path)
+add_ragel_file(MAIN_FILE css)
+add_ragel_file(MAIN_FILE html)
+add_ragel_file(MAIN_FILE path)
 
 add_custom_target(parser_code_generated
-    ${HEADER_DEPENDS}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/css.hpp
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/html.hpp
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/path.hpp
 )
 
 ################################
@@ -75,6 +74,7 @@ add_machine_visualization(MAIN_FILE js MACHINE_NAME end_script_tag)
 add_machine_visualization(MAIN_FILE js MACHINE_NAME in_script_js)
 add_machine_visualization(MAIN_FILE js MACHINE_NAME dq_escaped_string)
 add_machine_visualization(MAIN_FILE js MACHINE_NAME in_dq_js)
+add_machine_visualization(MAIN_FILE js MACHINE_NAME in_sq_js)
 
 FILE(APPEND "${VISUALIZATION_DIR}/index.html" "</body></dl>")
 
@@ -87,6 +87,14 @@ add_custom_target(parser_visualization
     DEPENDS "${VISUALIZATION_DIR}/in_script_js.svg"
     DEPENDS "${VISUALIZATION_DIR}/dq_escaped_string.svg"
     DEPENDS "${VISUALIZATION_DIR}/in_dq_js.svg"
+    DEPENDS "${VISUALIZATION_DIR}/in_sq_js.svg"
     DEPENDS "${VISUALIZATION_DIR}/index.html")
 
 ##################################
+
+# Copy the test files for test_html
+file(COPY
+     ${CMAKE_CURRENT_SOURCE_DIR}/index.html
+     ${CMAKE_CURRENT_SOURCE_DIR}/index.html.expected
+     DESTINATION
+     ${CMAKE_CURRENT_BINARY_DIR})

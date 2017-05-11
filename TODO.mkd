@@ -8,6 +8,8 @@
 
 ## Parse JS strings
 
+In the HTML parser, if there's a non quoted attribute just skip over it, it's unlikely to have a path in it.
+
 ## Parse inline JS inside of HTML
 
 ## Base tag

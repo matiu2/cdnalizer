@@ -4,8 +4,9 @@ namespace cdnalizer {
 namespace parser {
 
 %%{ 
-  machine css;
+  machine css_impl;
   include css "css.machine.rl";
+  css_impl := css;
 }%%
 
 // State machine exports

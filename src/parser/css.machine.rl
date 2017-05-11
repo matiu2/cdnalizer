@@ -18,5 +18,5 @@
     no_quotes = (any - no_quotes_term) > rec_start (any - no_quotes_term)* %rec_end;
     url_middle = single_quotes | double_quotes | no_quotes;
     single_url = url_start url_middle url_end;
-    css := (find_url single_url)*;
+    css = (find_url single_url)*;
 }%%
