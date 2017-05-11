@@ -1,5 +1,10 @@
 %%{
-  machine simple_tag;
+  machine html;
+
+  include "css.machine.rl";
+  include js "js.in.dq.machine.rl";
+  include js "js.in.sq.machine.rl";
+  include js "js.machine.rl";
 
   action rec_tag_name_start {
       tag_name_start = p;
@@ -32,11 +37,11 @@
 
   # Attribute Name
   attrib_name_chars = alnum | '_' | ':' | '-';
-  attrib_name = attrib_name_chars >rec_attrib_name_start attrib_name_chars* %rec_attrib_name_end;
+  attrib_name_js = "on"i attrib_name_chars+; # attribute names that begin with 'on' will contain JS to parse
+  attrib_name_non_js = attrib_name_chars >rec_attrib_name_start attrib_name_chars* %rec_attrib_name_end;
+  attrib_name = (attrib_name_non_js - "on"i) | attrib_name_js;
 
   # Attribute value
-  dq = '"';
-  sq = "'";
   attrib_val_double_quoted = dq ^dq >rec_attrib_val_start (^dq*) dq >rec_attrib_val_end;
   attrib_val_single_quoted = sq ^sq >rec_attrib_val_start (^sq*) sq >rec_attrib_val_end; 
   #attrib_val_no_quote_char = alnum | '-' | '.';  # Non quoted attrib possible chars according to HTML4 spec
@@ -45,7 +50,8 @@
   attrib_val = attrib_val_double_quoted | attrib_val_single_quoted | attrib_val_no_quotes;
 
   # Attribute
-  attrib = attrib_name space* ('=' space* attrib_val)?;
+  attrib = ((attrib_name_non_js - "on"i) space* ('=' space* attrib_val)?) |
+           (attrib_name_js - "on"i) space* '=' space* js_read_attrib | attrib_val_no_quotes;
 
   # Different types of tags we come across
   empty_xml = "<!>";
@@ -56,4 +62,6 @@
   good_tag = tag_start space+ (attrib space+)* (attrib)? tag_end;
 
   simple_tag = xml_thing | comment | end_tag | empty_tag | good_tag;
+  mega_tag = xml_thing | comment | end_tag | empty_tag | good_tag;
+
 }%%

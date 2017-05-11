@@ -7,7 +7,7 @@ namespace parser {
 
 %%{ 
   machine tag_impl;
-  include simple_tag "html.machine.rl";
+  include html "html.machine.rl";
   tag_impl := simple_tag;
 }%%
 
