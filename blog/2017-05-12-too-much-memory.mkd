@@ -1,6 +1,6 @@
 # Re-doing parser
 
-I tried making the parser by one humungous state machine. I thought I could handle it by making pretty pictures of each sub machine.
+I tried making the parser by one humungous state machine. I thought I could handle it by making pretty pictures of each sub machine. Unfortunately ragel ran out of memory when trying to generate code (it used 6GB). I'm now going to break things up into multiple state machines with a simulated call stack (provided by ragel).
 
 # Reasoning
 
@@ -47,4 +47,4 @@ The only things we need to remember are:
 
 When we do change a path, this is how we'll split the buckets:
 
-![bucket brigades](buckets.svg) 
+![bucket brigades](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/buckets.svg) 
