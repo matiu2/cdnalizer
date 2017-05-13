@@ -1,0 +1,50 @@
+# Re-doing parser
+
+I tried making the parser by one humungous state machine. I thought I could handle it by making pretty pictures of each sub machine.
+
+# Reasoning
+
+I wanted a state machine because Apache gives you data in buckets (blocks). Suppose a bucket ends in the middle of an html attribute:
+
+    <img src="/some/path/pic.jpg" />
+                 ^
+                 bucket splits here
+
+Currently I have this [great
+iterator](https://github.com/matiu2/cdnalizer/blob/master/src/apache/AbstractBlockIterator.hpp),
+which makes all the buckets look like one big long string. The trouble with
+that is it's continually checking for the end of the bucket, and at the same
+time the parser is checking for the end of all buckets, so it's doing double
+the work for every iterator increment.
+
+When we profiled the parser, the iterator was contributing a good 20% to the time taken:
+
+![profiler output](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/Selection_117.png)
+
+With a state machine, we'd be able to cycle over one bucket (block of chars),
+then when it hits the end, we just need to remember the current state, then
+carry on going.
+
+----
+
+# Handling the path split
+
+The issue is, when I'm done with a bucket, it gets sent down the line to the browser; there's no going back to it.
+
+When we find we're in the middle of a path and we hit the bucket end, we'll
+have to split the bucket at the start of the path, send the first part down the
+line, then carry on parsing.
+
+The only things we need to remember are:
+
+ * The `char*` to the start of the path (this will become the start of the newly created bucket)
+ * The current state of the state machine
+ * The current callstack of the state machine
+ * If we make any changes:
+   + Split the second bucket at the end of the path
+   + Create a new bucket to hold the new path/url
+   + Remove the start bucket from the chain
+
+When we do change a path, this is how we'll split the buckets:
+
+![bucket brigades](buckets.svg) 

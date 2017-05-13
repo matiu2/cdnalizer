@@ -1,0 +1,34 @@
+digraph buckets {
+    rankdir=LR;
+    node [shape=record];
+    subgraph cluster_0 {
+        label = "Before Split";
+        b1:path1 -> b2:path2;
+        b1 [label="bucket 1| {<pre_path>\<img src=\" |<path1> /1st/part}"];
+        b2 [label="bucket 2| <path2> /second/part.gif | <post_path>\" alt=\"fun\" /\>"];
+    }
+    subgraph cluster_1 {
+        label = "1st split";
+        b1:pre_path -> b1a:pre_path [style="dotted" label=" "];
+        b2:post_path -> b22:post_path [style="dotted"];
+        b1a:pre_path -> b1b:path1;
+        b1b:path1 -> b22:post_path;
+        b1:path1 -> b1b:path1 [style="dotted"];
+        b1a [label="bucket 1a|<pre_path> \<img src=\""];
+        b1b [label="bucket 1b|<path1> /1st/part"]
+        b22 [label="bucket 2| <path2> /second/part.gif | <post_path>\" alt=\"fun\" /\>"];
+    }
+    subgraph cluster_4 {
+        label = "2nd split";
+        b1b:path1 -> decoupled1:path [style="dotted"];
+        b22:path2 -> decoupled2:path [style="dotted"];
+        sent2:junk -> new_data:path;
+        b22:post_path -> second_split:junk [style="dotted"];
+        new_data:path -> second_split:junk;
+        sent2 [label="Bit before path|<junk> \<img src=\" |(already sent to browser)"];
+        new_data [label="New Data|<path>http://some/new/path/part.gif"];
+        second_split [label="bucket 2b|<junk>\" alt=\"fun\" /\>"];
+        decoupled1 [label="bucket 1b (deleted)|<path>/1st/part"];
+        decoupled2 [label="bucket 2a (deleted)|<path> /second/part.gif"];
+    }
+}
