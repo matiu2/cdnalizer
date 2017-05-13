@@ -47,4 +47,4 @@ The only things we need to remember are:
 
 When we do change a path, this is how we'll split the buckets:
 
-![bucket brigades](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/buckets.svg) 
+![buckets](https://cdn.rawgit.com/matiu2/cdnalizer/master/blog/buckets.svg)
