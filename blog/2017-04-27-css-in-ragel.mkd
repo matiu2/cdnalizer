@@ -40,7 +40,7 @@ I used this command to generate the state machine picture:
 
 And here's the output:
 
-	![css state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/css.png)
+![css state machine](https://raw.githubusercontent.com/matiu2/cdnalizer/master/blog/css.png)
 
 Now all I have to do is:
 
