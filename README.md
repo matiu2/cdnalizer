@@ -2,6 +2,14 @@
 
 cee-dee-en-a-lies-ur
 
+## WARNING: Currently on hold
+
+Devoplement is on hold so I can focus in the counterpart [cdnalizerd](https://github.com/matiu2/cdnalizerd) to make a useful product quicker.
+
+In the meantime, almost as perfect as this is going to be is [mod_substitute](https://httpd.apache.org/docs/2.4/mod/mod_substitute.html)
+
+When I start it up again, I'll be working from the `rewrite-based-on-mod-substitute` branch.
+
 ## What's it good for ?
 
 It helps makes your website faster and reduce load on your webserver.
