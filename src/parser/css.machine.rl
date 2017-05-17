@@ -2,11 +2,15 @@
     machine css;
 
     action rec_start {
-      url_start = p;
+      path_start = p;
     }
 
     action rec_end {
-      path_found(url_start, p);
+      std::string newPath = path_found(path_start, p);
+      if (newPath != "")
+        return newPath;
+      else
+        path_start = nullptr;
     }
 
     find_url = (any)* -- "url";

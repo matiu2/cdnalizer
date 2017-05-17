@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <functional>
+
 namespace cdnalizer {
 namespace parser {
 
@@ -21,13 +24,15 @@ namespace parser {
 ///        passing two iterators, the first letter of the path, and one past the end.
 /// p is a reference because when dealing with Apache bucket brigades, it can change, and we changed it also
 /// pe is a const reference because apache bucket brigade splitting may change it (but we don't change it).
+/// cs is a reference to the current state of parsing
 template <typename Iterator>
-Iterator parseCSS(Iterator &p, const Iterator& pe,
-                  std::function<void(Iterator, Iterator)> path_found) {
-  int cs;
+std::string
+parseCSS(Iterator &p, const Iterator &pe, int &cs, Iterator &path_start,
+         std::function<std::string(Iterator, Iterator)> path_found) {
 
-  // Data needed for the actions
-  auto url_start = p;
+  // If current state is undefined, set it to our start state
+  if (cs == -1)
+    cs = css_start;
 
   // State machine initialization
   %%write init;
@@ -35,7 +40,7 @@ Iterator parseCSS(Iterator &p, const Iterator& pe,
   // State machine code
   %%write exec;
 
-  return p;
+  return "";
 }
 
 
