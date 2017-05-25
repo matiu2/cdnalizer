@@ -4,7 +4,6 @@
  **/
 #include "filter.hpp"
 
-#include "../Rewriter.hpp"
 #include "../Config.hpp"
 #include "../Parser.hpp"
 #include "BucketWrapper.hpp"
@@ -42,17 +41,11 @@ void moveBuckets(BucketWrapper &a, BucketWrapper &b, apr_bucket_brigade *dest) {
 }
 
 /// Called when we need to flush our completed work
-apr_status_t flush(BrigadeGuard& completed_work) {
+apr_status_t flush(ap_filter_t *filter, BrigadeGuard& completed_work) {
   apr_status_t result = ap_pass_brigade(filter->next, completed_work);
   apr_brigade_cleanup(completed_work);
   return result;
 }
-
-/// This is our status that we store between calls to filter
-struct Status {
-  apr_bucket_brigade* leftover_work = nullptr;
-  std::unique_ptr<cdnalizer::Parser> p;
-};
 
 apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Just pass on empty brigade if it is empty
@@ -94,14 +87,16 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     assert(APR_BRIGADE_EMPTY(leftover_work));
   }
 
-  BucketWrapper bucket{bb, [&completed_work]() { flush(completed_work); }};
+  BucketWrapper bucket{bb, [&completed_work, filter]() {
+                         return flush(filter, completed_work);
+                       }};
   BucketWrapper end(lastBucket(bb));
 
   // We could get a whole bunch of non-data buckets. The brigade would be
   // technically not empty, but practically empty for our purposes
   if (bucket == end) {
     moveBuckets(bucket, end, completed_work);
-    return flush(completed_work);
+    return flush(filter, completed_work);
   }
 
   // Find the content type of what we're serving
@@ -112,7 +107,7 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       ct = CSS;
 
   // TODO: Make it parse other content types
-  cdnalizer::parser::Parser parser(ct);
+  cdnalizer::Parser<char*> parser(ct, location);
 
   // Log that we're gonna do some work
   const char *log_location = location.c_str();
@@ -122,23 +117,32 @@ apr_status_t filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Unchanged work
   BucketWrapper unchanged_data = bucket;
 
+  std::string newData;
   while (bucket != end) {
-    BucketEvent result = parser.parseNextBlock(bucket.begin(), bucket.end());
-    if (result.splitPoint != nullptr)
-      bucket.split(result.splitPoint);
-    // Move all the work we've done so far to completed_work
-    auto next = bucket.next();
-    moveBuckets(unchanged_data, bucket, completed_work);
-    // Remember where we are for future 
-    bucket = unchanged_data = next;
-    if (!result.newData.empty()) {
-      // Create a new bucket to append to completed work
-      // Copy the data to it. Needs to be copied because it's coming from a data
-      // dict, that will dissapear when the filter does.
-      apr_bucket *newDataBucket =
-          apr_bucket_heap_create(result.newData.c_str(), result.newData.size(),
-                                 NULL, filter->c->bucket_alloc);
-      APR_BRIGADE_INSERT_TAIL(completed_work.brigade(), newDataBucket);
+    auto pos = bucket.begin();
+    const auto end = bucket.end();
+    while (pos != end) {
+      parser.parseNextBlock(pos, bucket.end(), std::back_inserter(newData));
+      // The parser didn't get to the end of the bucket
+      if (result != bucket.end()) {
+        bucket.split(result);
+
+      }
+      // Move all the work we've done so far to completed_work
+      auto next = bucket.next();
+      moveBuckets(unchanged_data, bucket, completed_work);
+      // Remember where we are for future
+      bucket = unchanged_data = next;
+      if (!result.newData.empty()) {
+        // Create a new bucket to append to completed work
+        // Copy the data to it. Needs to be copied because it's coming from a
+        // data
+        // dict, that will dissapear when the filter does.
+        apr_bucket *newDataBucket = apr_bucket_heap_create(
+            result.newData.c_str(), result.newData.size(), NULL,
+            filter->c->bucket_alloc);
+        APR_BRIGADE_INSERT_TAIL(completed_work.brigade(), newDataBucket);
+      }
     }
   }
 

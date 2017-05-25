@@ -2,22 +2,26 @@
 #line 1 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 #pragma once
 
+#include <string>
+#include <functional>
+#include <boost/range/iterator_range.hpp>
+
 namespace cdnalizer {
 namespace parser {
 
 
-#line 9 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 13 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 
 // State machine exports
 
-#line 15 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 19 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 
-#line 13 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 17 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 // State machine data
 
-#line 21 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 25 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 static const char _css_actions[] = {
 	0, 1, 0, 1, 1
 };
@@ -76,35 +80,37 @@ static const int css_error = 0;
 static const int css_en_css = 12;
 
 
-#line 16 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 20 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
 /// Parses some CSS, looking for url() functions
 /// @param A reference to the pointer to the start of the data. This will be incremented as our search continues
 /// @param pe A const reference to the pointer to the end of the input
-/// @param path_found This function will be called every time a path is found,
-///        passing two iterators, the first letter of the path, and one past the end.
 /// p is a reference because when dealing with Apache bucket brigades, it can change, and we changed it also
 /// pe is a const reference because apache bucket brigade splitting may change it (but we don't change it).
+/// cs is a reference to the current state of parsing
 template <typename Iterator>
-Iterator parseCSS(Iterator &p, const Iterator& pe,
-                  std::function<void(Iterator, Iterator)> path_found) {
-  int cs;
+boost::iterator_range<Iterator> parseCSS(Iterator &p, Iterator pe, int &cs) {
 
-  // Data needed for the actions
-  auto url_start = p;
+  Iterator path_start;
+
+  int path_start_state = css_start;
+
+  // If current state is undefined, set it to our start state
+  if (cs == -1)
+    cs = css_start;
 
   // State machine initialization
   
-#line 99 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 105 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 	{
 	cs = css_start;
 	}
 
-#line 34 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 40 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
   // State machine code
   
-#line 108 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 114 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -181,16 +187,20 @@ _match:
 	case 0:
 #line 4 "/home/ubuntu/projects/cdnalizer/src/parser/css.machine.rl"
 	{
-      url_start = p;
+      path_start = p;
+      path_start_state = cs;
     }
 	break;
 	case 1:
-#line 8 "/home/ubuntu/projects/cdnalizer/src/parser/css.machine.rl"
+#line 9 "/home/ubuntu/projects/cdnalizer/src/parser/css.machine.rl"
 	{
-      path_found(url_start, p);
+      // We've found the path start and the path end, return the pair
+      assert(path_start != decltype(path_start)());
+      if (path_start != p)
+        return {path_start, p};
     }
 	break;
-#line 194 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
+#line 204 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp"
 		}
 	}
 
@@ -203,9 +213,12 @@ _again:
 	_out: {}
 	}
 
-#line 37 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
+#line 43 "/home/ubuntu/projects/cdnalizer/src/parser/css.hpp.rl"
 
-  return p;
+  // If we get here we've found the path_start but not the path end return just
+  // the path_start, and an empty iterator
+  if (path_start != decltype(path_start)())
+    return {path_start, Iterator{}};
 }
 
 

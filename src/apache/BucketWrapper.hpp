@@ -47,16 +47,17 @@ private:
         }
     }
 public:
-    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush, apr_bucket* bucket)
-    : bb{bb}, onFlush{onFlush}, _bucket{bucket}
-    {
-        if (bb != nullptr)
-            init4NewBucket();
+  BucketWrapper(apr_bucket_brigade *bb, FlushHandler onFlush,
+                apr_bucket *bucket)
+      : bb{bb}, onFlush{onFlush}, _bucket{bucket} {
+    if (bb != nullptr)
+      init4NewBucket();
     }
-    BucketWrapper(apr_bucket_brigade* bb, FlushHandler onFlush) : BucketWrapper(bb, onFlush, APR_BRIGADE_FIRST(bb)) {}
+    BucketWrapper(apr_bucket_brigade *bb, FlushHandler onFlush)
+        : BucketWrapper(bb, onFlush, APR_BRIGADE_FIRST(bb)) {}
     // We need to provide this to be a ForwardIterator
     BucketWrapper(const BucketWrapper &other)
-        : bb(other.bb), onFlush(other.onFlush), bucket(other.bucket) {}
+        : bb(other.bb), onFlush(other.onFlush), _bucket(other._bucket) {}
     const char* begin() const { return data; }
     const char* end() const { return data + length; }
     /// Means we are the sentinel bucket; one past the end .. there is no more data to process

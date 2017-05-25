@@ -3,8 +3,6 @@
  * Ensure's events are triggered correctly and that blocks are processed correctly.
  **/
 #include "Config.hpp"
-#include "Rewriter.hpp"
-#include "Rewriter_impl.hpp"
 
 #include <bandit/bandit.h>
 #include <ostream>

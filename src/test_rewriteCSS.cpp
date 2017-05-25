@@ -4,10 +4,11 @@
  *correctly.
  **/
 #include "Config.hpp"
-#include "Rewriter.hpp"
-#include "Rewriter_impl.hpp"
+
+#include "../src/Parser.hpp"
 
 #include <bandit/bandit.h>
+#include <boost/range/iterator_range.hpp>
 #include <ostream>
 
 using namespace cdnalizer;
@@ -24,39 +25,33 @@ go_bandit([]() {
   std::string location("/blog");
   cdnalizer::Config cfg{{{"/images", "https://cdn.supa.ws/imgs"}}};
 
-  using iterator = std::string::const_iterator;
+  using Iterator = std::string::const_iterator;
 
   std::vector<std::string> unchanged, newData;
-  RangeEvent<iterator> unchangedEvent = [&](const iterator &a,
-                                            const iterator &b) -> iterator {
-    std::string tmp;
-    std::copy(a, b, std::back_inserter(tmp));
-    unchanged.emplace_back(std::move(tmp));
-    return b;
-  };
-
-  auto newDataEvent = [&newData](std::string aNewData) {
-    newData.emplace_back(std::move(aNewData));
-  };
+  std::string output;
 
   before_each([&]() {
     unchanged.clear();
     newData.clear();
+    output.clear();
   });
 
   describe("Rewrite CSS", [&]() {
 
     it("1. Returns unchanged when there are no paths", [&]() {
       const std::string data{"There are no paths here"};
-      auto end = cdnalizer::rewriteHTML<iterator>(
-          server, location, cfg, data.cbegin(), data.cend(), unchangedEvent,
-          newDataEvent, true);
+      Iterator pos = data.cbegin();
+      Iterator end = data.cend();
+      cdnalizer::Parser<Iterator> parser(apache::CSS, location);
+      std::string newOut;
+      parser.parseNextBlock(pos, end, newOut);
       AssertThat(end, Equals(data.cend()));
       AssertThat(unchanged, HasLength(1));
       AssertThat(unchanged.at(0), Is().EqualTo(data));
       AssertThat(newData, HasLength(0));
     });
 
+    /*
     it("2. Picks up paths with no quotes and no spaces", [&]() {
       const std::string data{"background-image{ url(/images/b.gif)}"};
       auto end = cdnalizer::rewriteHTML<iterator>(
@@ -108,6 +103,7 @@ go_bandit([]() {
       AssertThat(newData.at(0), Is().EqualTo("https://cdn.supa.ws/imgs"));
       AssertThat(unchanged.at(1), Is().EqualTo(R"--(/b.gif'   )}; )--"));
     });
+    */
 
   });
 

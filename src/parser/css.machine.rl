@@ -3,14 +3,14 @@
 
     action rec_start {
       path_start = p;
+      path_start_state = cs;
     }
 
     action rec_end {
-      std::string newPath = path_found(path_start, p);
-      if (newPath != "")
-        return newPath;
-      else
-        path_start = nullptr;
+      // We've found the path start and the path end, return the pair
+      assert(path_start != decltype(path_start)());
+      if (path_start != p)
+        return {path_start, p};
     }
 
     find_url = (any)* -- "url";

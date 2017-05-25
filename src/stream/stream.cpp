@@ -3,8 +3,6 @@
  * License: Apache License, Version 2.0 (See LICENSE.txt)
  **/
 #include "stream.hpp"
-#include "../Rewriter_impl.hpp"
-#include "iterator.hpp"
 
 namespace cdnalizer {
 namespace stream {
