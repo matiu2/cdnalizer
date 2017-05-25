@@ -1,7 +1,8 @@
 #pragma once
 
-#include <boost/range/iterator_range.hpp>
 #include "utils.hpp"
+
+#include <boost/range/iterator_range.hpp>
 
 namespace cdnalizer {
 
@@ -70,16 +71,56 @@ canonicalFromAbsolutePath(int &skipOverCount, const std::string &location,
   return std::string(path.begin(), path.end());
 }
 
-template <typename Iterator, typename Path>
-void handlePath(Iterator start, Iterator end, int &skipOverCount,
-                const std::string &location, const Path &path,
-                const std::string &server_url) {
+using FindCDNURL = std::function<const std::pair<std::string, std::string> &(
+                    const std::string &)>;
+
+template <typename Path>
+std::pair<int, const std::string &>
+handlePath(int &skipOverCount, const std::string &location, const Path &path,
+           const std::string &server_url, FindCDNURL findCDNUrl) {
   // First get the canonical version of the string
   std::string canonical(
       utils::is_relative(start, end)
           ? canonicalFromRelativePath(skipOverCount, location, path)
           : canonicalFromAbsolutePath(skipOverCount, location, path,
                                       server_url));
+
+  // Now we know what to search for in our map
+  // eg. canonical='/images/fun.gif'
+
+  // See if we have a replacement, if we search for /images/abc.gif .. we'll
+  // get the CDN for /images/ (if that's in the config)
+  // 'found' will be {'path we care about', 'what it should look like'}
+  // eg. {"/images/", "http://cdn.supa.ws/images/"}
+  auto found(findCDNUrl(canonical));
+  if (found.first.empty() && found.second.empty()) {
+    // We found nothing
+    return {{}, 0, empty};
+  }
+
+  skipOverCount += found.first.size();
+
+  const std::string &base_path = found.first;
+  const std::string &cdn_url = found.second;
+
+  // We have three possible situations here:
+  // 1. * path_range = "/images/x.jpg"
+  //    * base_path = "/images/"
+  //    * canonical = "/images/"
+  //    * cdn_url = "http://cdn.supa.ws/images/"
+  // 2. * path_range = "http://www.supa.ws/images/x.jpg"
+  //    * base_path = "/images/"
+  //    * canonical = "/images/x.jpg"
+  //    * cdn_url = "http://cdn.supa.ws/images/"
+  // 3. * path_range = "../images/x.jpg"
+  //    * base_path = "/images/"
+  //    * canonical = "/images/x.jpg"
+  //    * cdn_url = "http://cdn.supa.ws/images/"
+
+  size_t howMuchToCut = std::distance(path.begin(), path.end()) -
+                        (canonical.size() - base_path.size());
+
+  return {howMuchToCut, cdn_url};
 }
 
-} /* cdnalizer */ 
+} /* cdnalizer */
